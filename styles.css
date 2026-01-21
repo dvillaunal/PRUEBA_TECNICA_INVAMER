@@ -1,0 +1,66 @@
+/* Estilos CSS con colores corporativos del Metro de Medellín */
+
+:root {
+  --metro-azul: #f6eaea;
+  --metro-blanco: #FFFFFF;
+  --metro-verde: #7c0041;
+  --metro-rojo: #b64f34;
+  --metro-amarillo: #fca732;
+  --metro-negro: #000000;
+}
+
+/* Estilos básicos */
+body {
+  background-color: var(--metro-blanco);
+  color: var(--metro-negro);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--metro-verde);
+}
+
+a {
+  color: var(--metro-verde);
+}
+
+a:hover {
+  color: var(--metro-negro);
+}
+
+/* Navbar */
+.navbar {
+  background-color: var(--metro-verde) !important;
+}
+
+.navbar-brand, .navbar-nav .nav-link {
+  color: var(--metro-blanco) !important;
+  font-size: 1.2em;
+}
+
+.navbar-nav .nav-link:hover {
+  color: var(--metro-negro) !important;
+}
+
+/* Botones */
+.btn-primary {
+  background-color: var(--metro-verde);
+  border-color: var(--metro-verde);
+  color: var(--metro-blanco);
+}
+
+.btn-primary:hover {
+  background-color: var(--metro-negro);
+  border-color: var(--metro-negro);
+}
+
+/* Enlaces en contenido */
+.quarto-title-banner {
+  background-color: var(--metro-verde);
+  color: var(--metro-blanco);
+}
+
+/* Footer o elementos adicionales si es necesario */
+footer {
+  background-color: var(--metro-verde);
+  color: var(--metro-blanco);
+}

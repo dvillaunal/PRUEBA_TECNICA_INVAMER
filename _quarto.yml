@@ -1,0 +1,24 @@
+project:
+  type: website
+
+website:
+  title: "Prueba Técnica | Daniel F. Villa R."
+  navbar:
+    left:
+      - href: PARTE_1.qmd
+        text: 'Parte 1'
+      - href: PARTE_2.qmd
+        text: 'Parte 2'
+      - href: PARTE_3.qmd
+        text: 'Parte 3'
+
+format:
+  html:
+    theme:
+      - zephyr
+    css: styles.css
+    toc: true
+    toc-title: "índice"
+
+
+

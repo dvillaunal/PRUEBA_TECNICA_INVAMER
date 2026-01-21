@@ -1,0 +1,12 @@
+
+::: {.callout-note appearance="simple" collapse=true}
+
+# Contexto
+
+Invamer lleva más de 50 años estudiando el mercado con profundidad, dándole soluciones a un amplio portafolio de clientes en el país y en el mundo.
+
+En esta ocasión, **la empresa de Transporte Masivo de cierta ciudad desea realizar un estudio para la validación del nivel de satisfacción de los usuarios frente al servicio prestado en los diferentes medios que opera.**
+:::
+
+# Propuesta de muestreo probabilístico
+
