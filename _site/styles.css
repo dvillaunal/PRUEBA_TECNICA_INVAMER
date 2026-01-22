@@ -13,16 +13,10 @@
 body {
   background-color: var(--metro-blanco);
   color: var(--metro-negro);
-  text-align: justify;
-  hyphens: auto;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  -ms-hyphens: auto;
 }
 
 h1, h2, h3, h4, h5, h6 {
   color: var(--metro-verde);
-  text-align: left;
 }
 
 a {
@@ -69,9 +63,4 @@ a:hover {
 footer {
   background-color: var(--metro-verde);
   color: var(--metro-blanco);
-}
-
-/* Tabla de contenido (TOC) sin justificación */
-.sidebar, .quarto-sidebar, .toc, .quarto-toc {
-  text-align: left;
 }

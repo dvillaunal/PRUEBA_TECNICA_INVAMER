@@ -11,6 +11,11 @@ website:
         text: 'Parte 2'
       - href: PARTE_3.qmd
         text: 'Parte 3'
+    right:
+      - icon: github
+        href: https://github.com/dvillaunal/PRUEBA_TECNICA_INVAMER.git
+      - icon: linkedin
+        href: https://www.linkedin.com/in/daniel-felipe-villa-rengifo-11b33b20a
 
 format:
   html:
@@ -22,6 +27,7 @@ format:
     code-fold: true
     df-print: paged
     fig-align: center
+    link-external-newwindow: true
 
 
 
