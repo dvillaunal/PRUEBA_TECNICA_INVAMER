@@ -839,7 +839,7 @@ tab_fb
 
 # Determinación del nivel de satisfacción frente al impacto social del sistema
 
-Para evaluar el impacto social del sistema no se utilizó un promedio simple, ya que este tiende a suavizar diferencias relevantes entre usuarios. En su lugar, se construyó un indicador basado en la proporción de aspectos sociales evaluados negativamente por cada usuario, permitiendo identificar no solo la existencia del impacto, sino también su intensidad. Esta métrica facilita la comparación entre medios, jornadas y grupos poblacionales, evidenciando brechas sociales concretas.
+Para evaluar el impacto social del sistema no se utilizó un promedio simple, ya que este tiende a suavizar diferencias relevantes entre usuarios. En su lugar, se construyó un indicador basado en la proporción de aspectos sociales evaluados negativamente por cada usuario, permitiendo identificar no solo la existencia del impacto, sino también su intensidad.
 
 ## Construcción del Índice de Impacto Social Negativo (IISN)
 
@@ -848,6 +848,7 @@ Define impacto social como riesgo, no como promedio.
 ```{r}
 #| message: false
 #| warning: false
+#| collapse: false
 impacto_vars <- data_eda %>%
   select(
     starts_with("p13_"),
@@ -882,7 +883,7 @@ ggplot(data_eda_iisn, aes(impacto_social_score)) +
   theme(axis.title.x = element_text(face = "bold"))
 ```
 
-Este comportamiento confirma que el impacto social no es un fenómeno aislado, sino una condición presente de forma transversal en la experiencia del sistema. El uso de esta métrica permite evidenciar estas situaciones con mayor claridad que un promedio simple, el cual tiende a mostrar una percepción general neutral o moderada.
+Este comportamiento confirma que el impacto social no es un fenómeno aislado, sino una condición presente de forma transversal en la experiencia del sistema. 
 
 
 ```{r}
@@ -1215,8 +1216,6 @@ Por el contrario, los usuarios con menor nivel educativo y aquellos que se rehú
 
 En esta parte, además de mirar promedios, se buscó resumir el servicio en pocas dimensiones que capturen el “patrón general” de experiencia del usuario. La idea es sencilla: cuando un servicio tiene muchas preguntas (seguridad, economía, rapidez, estaciones, vehículos, etc.), es útil encontrar 2 o 3 ejes principales que expliquen la mayor parte de las diferencias entre personas. Para eso se utilizó un PCA, que reduce muchas variables a pocas dimensiones interpretables.
 
-En términos prácticos, este análisis permite responder: ¿qué componentes del servicio se mueven juntos y cuáles son los que más explican la percepción general del sistema?
-
 #### Preparación del bloque de atributos del servicio
 
 Aquí usamos un bloque de preguntas que representan “atributos del servicio” (sin demografía). Para mantenerlo parsimonioso, se usan escalas tipo calificación:
@@ -1290,9 +1289,6 @@ Este comportamiento es consistente con estudios de satisfacción en servicios p�
 
 En conclusión, el PCA cumple un rol diagnóstico: evidencia que el servicio evaluado es complejo y que las percepciones negativas no se explican por un solo componente. Por esta razón, el análisis multidimensional posterior se enfoca en identificar qué dimensiones específicas generan mayor impacto negativo, en lugar de forzar una reducción excesiva de la información.
 
-Perfecto. Aquí te dejo **una propuesta sencilla, de valor y muy defendible**, pensada exactamente para responder esa pregunta sin sobrecomplicarla.
-La puedes **pegar tal cual** en el informe.
-
 # Propuesta para el análisis de preguntas abiertas
 
 Para analizar las preguntas abiertas, en las que los usuarios expresan razones o sugerencias en texto libre, se propone un enfoque **exploratorio y complementario** al análisis cuantitativo. El objetivo no es construir modelos complejos de lenguaje, sino **identificar patrones recurrentes en el discurso de los usuarios** que ayuden a explicar los resultados numéricos del estudio.
@@ -1306,6 +1302,7 @@ En primer lugar, se depuran las respuestas eliminando valores nulos, respuestas 
 ```{r}
 #| message: false
 #| warning: false
+#| collapse: false
 texto_p29 <- data_eda %>%
   filter(!is.na(p29)) %>%
   mutate(
@@ -1327,6 +1324,7 @@ Una vez preparado el texto, se descompone en palabras individuales y se calculan
 ### Identificación de temas dominantes
 
 ```{r}
+#| collapse: false
 top_palabras <- texto_p29 %>%
   count(word = toupper(word), sort = TRUE) %>%
   slice_head(n = 15)
@@ -1339,6 +1337,7 @@ top_palabras
 El gráfico de frecuencia de palabras muestra que los términos más recurrentes en las respuestas abiertas están asociados principalmente a la operación del servicio y la experiencia en horas pico. Palabras como pico, horas, trenes, alimentadores, buses, estaciones y rutas aparecen con alta frecuencia, lo que sugiere que las principales preocupaciones de los usuarios se concentran en la capacidad del sistema, los tiempos de espera y la congestión en determinados momentos del día.
 
 ```{r}
+#| collapse: false
 top_palabras %>% 
   mutate(
     word = str_to_title(word)
@@ -1362,7 +1361,7 @@ Asimismo, la presencia reiterada del término mejorar indica que una parte impor
 
 ## 3. Articulación con los resultados cuantitativos
 
-Finalmente, los temas identificados en el análisis textual se contrastan con los resultados del análisis descriptivo y multidimensional. De esta forma, las respuestas abiertas se utilizan como un **insumo explicativo**, que ayuda a entender por qué ciertos atributos del servicio presentan mayores niveles de insatisfacción o impacto social negativo.
+Finalmente, los temas identificados en el análisis textual se contrastan con los resultados del análisis descriptivo y multidimensional.
 
 Por ejemplo, si los indicadores muestran bajos niveles de satisfacción en seguridad o información, y estos mismos temas aparecen con alta frecuencia en los comentarios abiertos, se refuerza la consistencia y validez del diagnóstico.
 
@@ -1383,11 +1382,11 @@ Este resultado es consistente con el análisis multidimensional previo, en el qu
 
 # Conclusión general
 
-A partir del uso combinado de técnicas estadísticas descriptivas, análisis multidimensional y exploración de texto, se logró construir un diagnóstico integral sobre la satisfacción de los usuarios del sistema y los factores que influyen en su percepción del servicio. Este enfoque permitió ir más allá de promedios generales y evidenciar tanto la intensidad del impacto social como las dimensiones específicas que lo explican.
+A partir del uso combinado de técnicas estadísticas descriptivas, análisis multidimensional y exploración de texto, se logró construir un diagnóstico integral sobre la satisfacción de los usuarios del sistema y los factores que influyen en su percepción del servicio. 
 
 Los resultados muestran que la satisfacción general del servicio (P3) se encuentra estrechamente relacionada con la disposición a recomendar el sistema (P6). A medida que la evaluación del servicio mejora, aumenta de forma consistente la probabilidad de recomendación, lo que confirma que la experiencia del usuario tiene un efecto directo sobre la imagen y legitimidad del sistema. Sin embargo, incluso en niveles medios y altos de satisfacción persisten porcentajes relevantes de usuarios con percepciones negativas en aspectos específicos del servicio.
 
-El análisis multidimensional evidenció que las mayores afectaciones no se concentran en una sola dimensión, sino que se distribuyen principalmente en **información**, **entorno de uso** y **condiciones operativas**, especialmente en situaciones de alta demanda. Estas dimensiones explican buena parte del impacto social negativo identificado y muestran que la insatisfacción no responde únicamente a fallas aisladas, sino a la combinación de varios componentes del servicio.
+En el caso del análisis multidimensional evidenció que las mayores afectaciones no se concentran en una sola dimensión, sino que se distribuyen principalmente en **información**, **entorno de uso** y **condiciones operativas**, especialmente en situaciones de alta demanda. Estas dimensiones explican buena parte del impacto social negativo identificado y muestran que la insatisfacción no responde únicamente a fallas aisladas, sino a la combinación de varios componentes del servicio.
 
 Las respuestas abiertas (P29) refuerzan estos hallazgos al identificar, desde el discurso espontáneo de los usuarios, temas recurrentes asociados a **horas pico**, **capacidad de trenes y buses**, **frecuencia del servicio**, **funcionamiento de alimentadores**, y **condiciones en estaciones y rutas**. El hecho de que los usuarios que dejan comentarios presenten, en promedio, mayores niveles de impacto social negativo confirma que el texto abierto actúa como un mecanismo de expresión de experiencias críticas.
 
@@ -1403,7 +1402,7 @@ Con base en los análisis realizados, se proponen las siguientes rutas de acció
 
 4. **Uso sistemático de las preguntas abiertas**: incorporar el análisis periódico de los comentarios como un complemento a los indicadores cuantitativos, permitiendo monitorear de forma temprana nuevas fuentes de insatisfacción.
 
-En conclusión, el uso articulado de análisis estadísticos y exploración cualitativa permitió identificar no solo el nivel de satisfacción del usuario, sino también los componentes del servicio que más inciden en su experiencia. Este enfoque integral ofrece una base sólida y accionable para la toma de decisiones orientadas al mejoramiento continuo del sistema y al fortalecimiento de la percepción positiva por parte de sus usuarios.
+En conclusión, el uso articulado de análisis estadísticos y exploración cualitativa permitió identificar no solo el nivel de satisfacción del usuario, sino también los componentes del servicio que más inciden en su experiencia. 
 
 
 

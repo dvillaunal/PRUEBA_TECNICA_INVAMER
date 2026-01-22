@@ -35,8 +35,6 @@ El diseño contempla las siguientes etapas:
 - **Tercera etapa (hogares):** selección sistemática de hogares dentro de cada segmento.
 - **Cuarta etapa (persona):** selección aleatoria del encuestado dentro del hogar (método de Kish o criterio de último cumpleaños).
 
-Este esquema asegura representatividad regional, reduce costos logísticos al concentrar el trabajo de campo y mantiene probabilidades de selección conocidas en todas las etapas del muestreo.
-
 ### Tamaño de muestra requerido para un margen de error menor al 3% por región
 
 ```{r}
@@ -103,7 +101,7 @@ mpios_total
 - Si se realizan 36 encuestas por municipio, sería necesario visitar alrededor de 30 municipios por región para completar el tamaño muestral requerido.
 - A nivel nacional, esto implicaría un total aproximado de 180 municipios.
 
-Este criterio permite distribuir la muestra de manera equilibrada, reducir el sesgo por concentración en grandes ciudades y mejorar la cobertura territorial del estudio.
+Con esto se permite distribuir la muestra de manera equilibrada, reducir el sesgo por concentración en grandes ciudades y mejorar la cobertura territorial del estudio.
 
 ## Escenario 2: presupuesto máximo de 1.200 encuestas
 
