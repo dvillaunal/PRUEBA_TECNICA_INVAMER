@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>About – Prueba Técnica | Daniel F. Villa R.</title>
+<title>parte_2 – Prueba Técnica | Daniel F. Villa R.</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -103,7 +103,38 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
+<link href="site_libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet">
+<script src="site_libs/pagedtable-1.1/js/pagedtable.js"></script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -150,40 +181,227 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">índice</h2>
+   
+  <ul>
+  <li><a href="#muestreo-propuesta-y-cálculos" id="toc-muestreo-propuesta-y-cálculos" class="nav-link active" data-scroll-target="#muestreo-propuesta-y-cálculos">Muestreo (propuesta y cálculos)</a>
+  <ul class="collapse">
+  <li><a href="#supuestos-para-los-cálculos" id="toc-supuestos-para-los-cálculos" class="nav-link" data-scroll-target="#supuestos-para-los-cálculos">Supuestos para los cálculos</a></li>
+  <li><a href="#método-de-muestreo-propuesto-probabilístico-nacional-y-regional" id="toc-método-de-muestreo-propuesto-probabilístico-nacional-y-regional" class="nav-link" data-scroll-target="#método-de-muestreo-propuesto-probabilístico-nacional-y-regional">Método de muestreo propuesto (probabilístico, nacional y regional)</a></li>
+  <li><a href="#tamaño-de-muestra-requerido-para-un-margen-de-error-menor-al-3-por-región" id="toc-tamaño-de-muestra-requerido-para-un-margen-de-error-menor-al-3-por-región" class="nav-link" data-scroll-target="#tamaño-de-muestra-requerido-para-un-margen-de-error-menor-al-3-por-región">Tamaño de muestra requerido para un margen de error menor al 3% por región</a></li>
+  <li><a href="#tamaño-de-muestra-nacional" id="toc-tamaño-de-muestra-nacional" class="nav-link" data-scroll-target="#tamaño-de-muestra-nacional">Tamaño de muestra nacional</a></li>
+  <li><a href="#cuántos-municipios-deberían-visitarse" id="toc-cuántos-municipios-deberían-visitarse" class="nav-link" data-scroll-target="#cuántos-municipios-deberían-visitarse">¿Cuántos municipios deberían visitarse?</a></li>
+  </ul></li>
+  <li><a href="#escenario-2-presupuesto-máximo-de-1.200-encuestas" id="toc-escenario-2-presupuesto-máximo-de-1.200-encuestas" class="nav-link" data-scroll-target="#escenario-2-presupuesto-máximo-de-1.200-encuestas">Escenario 2: presupuesto máximo de 1.200 encuestas</a>
+  <ul class="collapse">
+  <li><a href="#margen-de-error-nacional-con-n-1200" id="toc-margen-de-error-nacional-con-n-1200" class="nav-link" data-scroll-target="#margen-de-error-nacional-con-n-1200">Margen de error nacional con <span class="math inline">\(n = 1200\)</span></a></li>
+  <li><a href="#margen-de-error-por-región-con-asignación-igual" id="toc-margen-de-error-por-región-con-asignación-igual" class="nav-link" data-scroll-target="#margen-de-error-por-región-con-asignación-igual">Margen de error por región con asignación igual</a></li>
+  </ul></li>
+  <li><a href="#notas-finales" id="toc-notas-finales" class="nav-link" data-scroll-target="#notas-finales">Notas finales</a>
+  <ul class="collapse">
+  <li><a href="#es-necesario-cambiar-el-método-de-muestreo" id="toc-es-necesario-cambiar-el-método-de-muestreo" class="nav-link" data-scroll-target="#es-necesario-cambiar-el-método-de-muestreo">¿Es necesario cambiar el método de muestreo?</a></li>
+  </ul></li>
+  <li><a href="#conclusión" id="toc-conclusión" class="nav-link" data-scroll-target="#conclusión">Conclusión</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content">
-
-<header id="title-block-header" class="quarto-title-block default">
-<div class="quarto-title">
-<h1 class="title">About</h1>
-</div>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"></header>
 
 
 
-<div class="quarto-title-meta">
 
-    
-  
-    
-  </div>
-  
-
-
-</header>
-
-
-<p>About this site</p>
+<section id="muestreo-propuesta-y-cálculos" class="level2">
+<h2 class="anchored" data-anchor-id="muestreo-propuesta-y-cálculos">Muestreo (propuesta y cálculos)</h2>
+<section id="supuestos-para-los-cálculos" class="level3">
+<h3 class="anchored" data-anchor-id="supuestos-para-los-cálculos">Supuestos para los cálculos</h3>
+<p>Para el diseño muestral y el cálculo de los márgenes de error se adoptan los siguientes supuestos, acordes con la práctica estándar en estudios de opinión:</p>
+<ul>
+<li>Nivel de confianza del 95%, correspondiente a un valor crítico de <span class="math inline">\(z = 1.96\)</span>.</li>
+<li>Se asume la máxima variabilidad poblacional (<span class="math inline">\(p = 0.5\)</span>), lo cual garantiza un tamaño de muestra conservador.</li>
+<li>Margen de error objetivo a nivel regional: <span class="math inline">\(e &lt; 3\%\)</span>.</li>
+</ul>
+<p>Se utiliza la fórmula clásica para la estimación de proporciones bajo muestreo aleatorio simple dentro de cada estrato:</p>
+<p><span class="math display">\[
+n = \frac{z^2 \, p(1-p)}{e^2}
+\]</span></p>
+<p>En la práctica, el trabajo de campo suele realizarse mediante conglomerados, lo que puede generar un efecto de diseño (<span class="math inline">\(DEFF &gt; 1\)</span>). En ese caso, el tamaño muestral requerido debe ajustarse como <span class="math inline">\(n_{aj} = n \times DEFF\)</span>. Para esta propuesta se reporta el tamaño mínimo teórico, asumiendo <span class="math inline">\(DEFF = 1\)</span>, con fines de planeación.</p>
+</section>
+<section id="método-de-muestreo-propuesto-probabilístico-nacional-y-regional" class="level3">
+<h3 class="anchored" data-anchor-id="método-de-muestreo-propuesto-probabilístico-nacional-y-regional">Método de muestreo propuesto (probabilístico, nacional y regional)</h3>
+<p>Se propone un muestreo probabilístico estratificado por región, con un esquema multietápico, adecuado para garantizar representatividad territorial y viabilidad operativa a nivel nacional.</p>
+<p>El diseño contempla las siguientes etapas:</p>
+<ul>
+<li><strong>Estratificación:</strong> definición de seis estratos correspondientes a las regiones del país (Caribe, Centro-Oriente, Eje Cafetero, Pacífico, Centro-Sur-Amazonía y Llano).</li>
+<li><strong>Primera etapa (municipios):</strong> selección de municipios dentro de cada región utilizando probabilidad proporcional al tamaño poblacional proyectado para 2026 (PPS), con base en información del DANE.</li>
+<li><strong>Segunda etapa (segmentos):</strong> selección aleatoria de manzanas o segmentos censales dentro de cada municipio seleccionado.</li>
+<li><strong>Tercera etapa (hogares):</strong> selección sistemática de hogares dentro de cada segmento.</li>
+<li><strong>Cuarta etapa (persona):</strong> selección aleatoria del encuestado dentro del hogar (método de Kish o criterio de último cumpleaños).</li>
+</ul>
+<p>Este esquema asegura representatividad regional, reduce costos logísticos al concentrar el trabajo de campo y mantiene probabilidades de selección conocidas en todas las etapas del muestreo.</p>
+</section>
+<section id="tamaño-de-muestra-requerido-para-un-margen-de-error-menor-al-3-por-región" class="level3">
+<h3 class="anchored" data-anchor-id="tamaño-de-muestra-requerido-para-un-margen-de-error-menor-al-3-por-región">Tamaño de muestra requerido para un margen de error menor al 3% por región</h3>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">+</span> <span class="dv">1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Parámetros</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>z <span class="ot">&lt;-</span> <span class="fl">1.96</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fl">0.5</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fl">0.03</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Tamaño de muestra por región (mínimo teórico, DEFF = 1)</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>n_region <span class="ot">&lt;-</span> (z<span class="sc">^</span><span class="dv">2</span> <span class="sc">*</span> p <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> p)) <span class="sc">/</span> (e<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>n_region</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
 <div class="cell-output cell-output-stdout">
-<pre><code>[1] 2</code></pre>
+<pre><code>[1] 1067.111</code></pre>
 </div>
 </div>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Redondeo práctico</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>n_region_round <span class="ot">&lt;-</span> <span class="fu">ceiling</span>(n_region)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>n_region_round</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1068</code></pre>
+</div>
+</div>
+<p>Con estos parámetros, el tamaño mínimo requerido por región es 1068.<br>
+Esto corresponde aproximadamente a 1.068 encuestas por región.</p>
+</section>
+<section id="tamaño-de-muestra-nacional" class="level3">
+<h3 class="anchored" data-anchor-id="tamaño-de-muestra-nacional">Tamaño de muestra nacional</h3>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>n_total <span class="ot">&lt;-</span> <span class="dv">6</span> <span class="sc">*</span> n_region_round</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>n_total</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 6408</code></pre>
+</div>
+</div>
+<p>En consecuencia, para garantizar un margen de error inferior al 3% en cada región, se requeriría un tamaño muestral nacional cercano a 6.400 encuestas, bajo los supuestos establecidos.</p>
+</section>
+<section id="cuántos-municipios-deberían-visitarse" class="level3">
+<h3 class="anchored" data-anchor-id="cuántos-municipios-deberían-visitarse">¿Cuántos municipios deberían visitarse?</h3>
+<p>Desde una perspectiva operativa, resulta conveniente fijar un número similar de encuestas por municipio dentro de cada región y, a partir de ello, determinar cuántos municipios deben incluirse.</p>
+<p>Como ejemplo ilustrativo:</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>n_por_mpio <span class="ot">&lt;-</span> <span class="dv">36</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>mpios_por_region <span class="ot">&lt;-</span> <span class="fu">ceiling</span>(n_region_round <span class="sc">/</span> n_por_mpio)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>mpios_por_region</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 30</code></pre>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>mpios_total <span class="ot">&lt;-</span> <span class="dv">6</span> <span class="sc">*</span> mpios_por_region</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>mpios_total</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 180</code></pre>
+</div>
+</div>
+<p><strong>Interpretación:</strong> - Si se realizan 36 encuestas por municipio, sería necesario visitar alrededor de 30 municipios por región para completar el tamaño muestral requerido. - A nivel nacional, esto implicaría un total aproximado de 180 municipios.</p>
+<p>Este criterio permite distribuir la muestra de manera equilibrada, reducir el sesgo por concentración en grandes ciudades y mejorar la cobertura territorial del estudio.</p>
+</section>
+</section>
+<section id="escenario-2-presupuesto-máximo-de-1.200-encuestas" class="level2">
+<h2 class="anchored" data-anchor-id="escenario-2-presupuesto-máximo-de-1.200-encuestas">Escenario 2: presupuesto máximo de 1.200 encuestas</h2>
+<section id="margen-de-error-nacional-con-n-1200" class="level3">
+<h3 class="anchored" data-anchor-id="margen-de-error-nacional-con-n-1200">Margen de error nacional con <span class="math inline">\(n = 1200\)</span></h3>
+<p>El margen de error se calcula mediante la expresión:</p>
+<p><span class="math display">\[
+e = z \sqrt{\frac{p(1-p)}{n}}
+\]</span></p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>margen_error <span class="ot">&lt;-</span> <span class="cf">function</span>(n, <span class="at">z =</span> <span class="fl">1.96</span>, <span class="at">p =</span> <span class="fl">0.5</span>){</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  z <span class="sc">*</span> <span class="fu">sqrt</span>(p <span class="sc">*</span> (<span class="dv">1</span> <span class="sc">-</span> p) <span class="sc">/</span> n)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>e_nacional_1200 <span class="ot">&lt;-</span> <span class="fu">margen_error</span>(<span class="dv">1200</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>e_nacional_1200</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.02829016</code></pre>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># En porcentaje</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>e_nacional_1200_pct <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> e_nacional_1200</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>e_nacional_1200_pct</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 2.829016</code></pre>
+</div>
+</div>
+<p>Con una muestra total de 1.200 encuestas, el margen de error nacional es aproximadamente ±2,8%, cumpliendo el criterio solicitado a nivel nacional.</p>
+</section>
+<section id="margen-de-error-por-región-con-asignación-igual" class="level3">
+<h3 class="anchored" data-anchor-id="margen-de-error-por-región-con-asignación-igual">Margen de error por región con asignación igual</h3>
+<p>Para mantener cobertura regional, se propone una asignación uniforme de la muestra:</p>
+<p><span class="math display">\[
+n_r = \frac{1200}{6} = 200
+\]</span></p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>n_region_1200 <span class="ot">&lt;-</span> <span class="dv">1200</span> <span class="sc">/</span> <span class="dv">6</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>n_region_1200</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 200</code></pre>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>e_region_200 <span class="ot">&lt;-</span> <span class="fu">margen_error</span>(n_region_1200)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>e_region_200</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.06929646</code></pre>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>e_region_200_pct <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> e_region_200</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>e_region_200_pct</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 6.929646</code></pre>
+</div>
+</div>
+<p>En este escenario, el margen de error por región sería cercano a ±6,9%.</p>
+</section>
+</section>
+<section id="notas-finales" class="level2">
+<h2 class="anchored" data-anchor-id="notas-finales">Notas finales</h2>
+<ul>
+<li><p>Con una muestra de 1.200 encuestas, se logra una precisión adecuada a nivel nacional (±2,8%), cumpliendo el criterio de error inferior al 3%.</p></li>
+<li><p>No obstante, para alcanzar un margen de error de ±3% en cada región, se requerirían aproximadamente 1.068 encuestas por región, lo que no es posible bajo la restricción presupuestal planteada.</p></li>
+<li><p>En consecuencia, no se cumple el nivel de representatividad regional inicialmente solicitado con una muestra total de 1.200 encuestas.</p></li>
+</ul>
+<section id="es-necesario-cambiar-el-método-de-muestreo" class="level3">
+<h3 class="anchored" data-anchor-id="es-necesario-cambiar-el-método-de-muestreo">¿Es necesario cambiar el método de muestreo?</h3>
+<p>No es necesario cambiar el enfoque metodológico. El diseño planteado (estratificación por región y selección multietápica con PPS) sigue siendo apropiado para asegurar cobertura territorial y mantener un procedimiento estadísticamente sólido.</p>
+<p>Lo que sí debe ajustarse es el alcance de lo que se puede concluir con el tamaño de muestra disponible. Con 1.200 encuestas, el estudio permite estimaciones confiables a nivel nacional, pero las estimaciones por región tendrán un margen de error más alto; por tanto, deben presentarse como resultados orientativos y no como cifras regionales de alta precisión.</p>
+</section>
+</section>
+<section id="conclusión" class="level2">
+<h2 class="anchored" data-anchor-id="conclusión">Conclusión</h2>
+<p>Para garantizar representatividad regional con un margen de error inferior al 3% y un nivel de confianza del 95%, se requeriría un tamaño muestral cercano a 1.068 encuestas por región, es decir, aproximadamente 6.400 encuestas a nivel nacional. Este diseño puede implementarse mediante muestreo probabilístico estratificado por región y selección multietápica de municipios, segmentos, hogares y personas. Si el presupuesto se limita a 1.200 encuestas, se alcanza una precisión nacional cercana a ±2,8%, pero la precisión regional se reduce a aproximadamente ±6,9%, por lo que no se cumple la meta regional inicialmente planteada. En este escenario, se recomienda mantener la estratificación regional y presentar los resultados regionales como orientativos, priorizando la estimación nacional.</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

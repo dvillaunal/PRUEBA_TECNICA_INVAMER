@@ -1,9 +1,46 @@
 ---
-title: "About"
+output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
-About this site
+# Situaciones de trabajo
 
-```{r}
-1 + 1
-```
+## Pregunta 1
+
+Usted se encuentra realizando un análisis en el que lleva trabajando dos días sin tener mucho éxito. De repente, llega una solicitud para reemplazar una manzana de una muestra que usted había generado días atrás, hasta que no realice el cambio los encuestadores no pueden continuar haciendo encuestas. ¿Qué decide hacer usted?:
+
+  a. Concentrarse en terminar rápido el análisis para poder realizar el reemplazo de la manzana.
+
+  b. Realizar el reemplazo de la manzana para que los encuestadores no queden parados y luego continuar con el análisis.
+  
+### Respuesta
+
+b) Realizaría primero el reemplazo de la manzana para que los encuestadores no queden parados y el operativo pueda continuar. Luego retomaría el análisis con calma, ya que el cambio es urgente y tiene un impacto directo en el trabajo de campo y en los tiempos del proyecto.
+
+## Pregunta 2
+
+Se le pide elaborar un factor de ponderación en Excel, sin embargo, usted cree que hay una mejor manera de realizarlo generando un programa en Python que de forma automática calcule el factor. ¿Qué decide hacer usted?:
+
+  a. Realizar el factor en Excel porque solamente debo reemplazar los valores de la medición actual en una plantilla y así se genera más rápido.
+
+  b. Diseñar una sintaxis en Python que automatice el cálculo del factor, pese a demorar mucho más la primera vez que se haga.
+
+### Respuesta 
+
+Depende del contexto, pero en principio escogería b): diseñar el cálculo en Python para automatizarlo y reducir errores, sobre todo si ese factor se va a repetir en futuras mediciones o habrá varias iteraciones. Si el requerimiento fuera estrictamente “para ya” y es un ejercicio único, lo haría en Excel como solución inmediata, pero dejando planteada la automatización como mejora.
+
+
+## Pregunta 3
+
+Uno de los ejecutivos comerciales le pregunta por los resultados de uno de los análisis que generó para un estudio. ¿Qué decide hacer usted?
+
+  a. Explicarle de la manera más sencilla posible el resultado para que le quede claro al ejecutivo a sí se omitan detalles técnicos del análisis.
+
+  b. Explicarle a profundidad al ejecutivo para que entienda técnica y matemáticamente de donde sale el resultado del análisis. 
+
+### Respuesta
+
+a) Explicaría los resultados de la manera más sencilla y clara posible para que el ejecutivo los pueda usar para tomar decisiones, sin entrar de entrada en tecnicismos. Si surgen dudas o necesita sustento, complementaría con el detalle metodológico (supuestos, datos, limitaciones) en un segundo nivel de explicación o en un anexo.
+
+

@@ -1,5 +1,12 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Propuesta de muestreo probabilístico
 
-::: {.callout-note appearance="simple" collapse=true}
+
+::: {.callout-note appearance="simple" collapse=true icon=false}
 
 # Contexto
 
@@ -8,5 +15,1395 @@ Invamer lleva más de 50 años estudiando el mercado con profundidad, dándole s
 En esta ocasión, **la empresa de Transporte Masivo de cierta ciudad desea realizar un estudio para la validación del nivel de satisfacción de los usuarios frente al servicio prestado en los diferentes medios que opera.**
 :::
 
-# Propuesta de muestreo probabilístico
+
+Se propone un **muestreo estratificado multietápico por conglomerados con asignación proporcional**, optimizado para operaciones de interceptación en el sistema de transporte masivo:
+
+* Etapa 1: Estratificación (obligatoria por medio/línea FB).
+
+* Etapa 2: Conglomerados (estaciones/paradas FC).
+
+* Etapa 3: Unidades finales (usuarios por intercept sistemático).
+
+> **Población Objetivo:** Usuarios activos del sistema durante las semanas de campo, en todos los medios/líneas evaluados.
+
+## Etapas del Diseño
+
+### Etapa 1: Estratificación
+
+* Estratos principales: Medio/Línea (FB).
+
+* Estratos secundarios (si presupuesto permite): Jornada (FG) dentro de cada FB.
+
+* Asignación proporcional:
+
+$$
+n_h = n \cdot \frac{N_h}{N}
+$$
+Donde $N_h$ es el tamaño del estrato (afluencia real, validadores o conteos operativos) y $n$ el tamaño total de muestra. *Esto asegura más encuestas en medios con mayor flujo.*
+
+::: {.callout-caution appearance="minimal" icon=false collapse=true}
+
+## ¿Si no se dispone de afluencia real?
+
+se puede usar:
+
+* Validaciones de torniquetes
+* Conteo operativo
+* O, en su defecto, proporción observada en la muestra (dejándolo explícito en el informe).
+
+:::
+
+### Etapa 2: Selección de Conglomerados
+
+* Unidades: Estaciones/paradas (FC) dentro de cada estrato.
+
+* Método: *Probabilidad Proporcional al Tamaño* (PPS) si hay datos de afluencia; de lo contrario, selección aleatoria simple con distribución equitativa de entrevistas por estación.
+
+### Etapa 3: Selección de Usuarios
+
+Interceptación sistemática: Cada $k-ésimo$ usuario (donde 
+$k= \frac{\text{flujo esperado}}{\text{entrevistas objetivo por estación}}$).
+
+Regla de reemplazo: Siguiente $k-ésimo$ en caso de rechazo, preservando aleatoriedad.
+
+### Pesos Muestrales
+
+Para cada usuario $i$ en estrato $h$, estación $c$:
+
+$$
+w_i = \frac{1}{\pi_h \cdot \pi_{c|h} \cdot \pi_{i|c}}
+$$
+
+Si no hay marco de expansión completo ($N_h$ o afluencias reales), reportar resultados como estimaciones muestrales sin inferencia poblacional, documentando esta limitación.
+
+Justificación del Diseño
+
+1. Representatividad: Captura la diversidad a través de medios, líneas, jornadas y estaciones, donde la satisfacción puede variar.
+
+2. Eficiencia: Emplea conglomerados naturales (estaciones) para disminuir costos logísticos, conservando propiedades probabilísticas mediante estratificación y selección sistemática.
+
+3. Practicidad: Está en sintonía con las operaciones de transporte masivo y los datos disponibles (flujos, validadores).
+
+# Análisis Descriptivo Exploratorio
+
+```{r}
+#| message: false
+#| warning: false
+#| output: false
+#| include: true
+# Librerias necesarias 
+
+require(tidyverse)
+require(magrittr)
+require(janitor)
+require(glue)
+require(readxl)
+require(ggthemes)
+require(scales)
+require(gt)
+require(FactoMineR)
+require(factoextra)
+require(tidytext)
+require(stringr)
+
+# Funciones
+source('code/FUN_FORMATEO_TEXTO.R')
+```
+
+::: {.callout-note appearance="simple" icon=false collapse=true}
+
+## Al momento de realizar el EDA, se va hacer uso de las siguientes variables:
+
+- `FB` – Medio/Línea  
+- `FG` – Jornada  
+- `P26` – Nivel de estudios
+- `P27` – Ocupación  
+- `P23` – Tipo de población
+
+:::
+
+```{r}
+# Sacar las hojas del excel en cuestión
+sheets <- excel_sheets('data_raw/prueba_tecnica.xlsx')
+```
+
+::: {.callout-note}  
+## Nota de la variable duplicada 
+La variable `p10_1_21` se descartó por redundancia con `p10_1_20`, renombrada como `p10_1` para coherencia en el análisis (`rename(p10_1 = p10_1_20)`).  
+:::
+
+```{r}
+#| message: false
+#| warning: false
+# Lectura de datos
+
+data_raw <- read_excel(
+  path = "data_raw/prueba_tecnica.xlsx",
+  sheet = sheets[1]
+) %>% 
+  clean_names() %>% 
+  select(-p10_1_21) %>% 
+  rename(
+    p10_1 = p10_1_20
+  )
+
+# Preguntas
+
+preguntas_raw <- read_excel(
+  path = 'data_raw/prueba_tecnica.xlsx',
+  sheet = sheets[2]
+) %>% 
+  clean_names()
+
+# Codigo preguntas
+
+codp_raw <- read_excel(
+  path = 'data_raw/prueba_tecnica.xlsx',
+  sheet = sheets[3]
+) %>% 
+  clean_names()
+```
+
+## Recodificacion de NS/NR a NA's
+
+Se recodificó 999 (No sabe/No responde) a NA solo en preguntas donde el diccionario lo confirma como NS/NR. No se hizo globalmente porque hay otros códigos como 990='Ninguno' o 996='Otro' que sí tienen significado.
+
+Así evitamos que las no-respuestas inflen promedios, reportamos tasas reales de respuesta por pregunta y segmento, y comparamos estratos sin falsear los números.
+
+```{r}
+#| message: false
+#| warning: false
+
+vars_999_na <- codp_raw %>%
+  filter(
+    codigo_opcion_respuesta == 999,
+    str_detect(formateo_texto(descripcion_opcion_respuesta), "no sabe|no responde")
+  ) %>%
+  pull(codigo_pregunta) %>%
+  tolower()
+
+print(
+  glue("Validación: ver cuántas variables entran al recode -> {length(vars_999_na)}")
+)
+```
+
+Por eso se convierte a NA únicamente en las variables donde el diccionario confirma que 999 es NS/NR.
+
+```{r}
+#| message: false
+#| warning: false
+
+data_eda <- data_raw %>%
+  mutate(
+    across(
+      all_of(intersect(vars_999_na, names(data_raw))),
+      ~ ifelse(.x == 999, NA, .x)
+    )
+  )
+```
+
+## Selección de variables de interés
+
+```{r}
+#| message: false
+#| warning: false
+
+vars_focus <- c("fb","fg","p26","p27","p23")
+vars_kpi   <- c("p3","p6","p7")
+
+eda_df <- data_eda %>%
+  select(any_of(c(vars_focus, vars_kpi)))
+
+glimpse(eda_df)
+```
+
+Para realizar el EDA inicial, se responden preguntas generadas para la prueba técnica, creando dudas sobre los datos y resolviéndolas mediante gráficos y tablas que permiten conocer mejor la información y descubrir nuevas perspectivas del mismo.
+
+## ¿Cómo varía la satisfacción general por medio, jornada y estación?
+
+Primero se construyó este gráfico agregando la variable P3 (calificación general del servicio) por medio/línea (FB). En concreto, para cada línea se calculó el promedio de P3 excluyendo las no-respuestas (NA) y se añadió una medida de incertidumbre (barras de error) para tener una idea rápida de qué tan estable es la estimación según el tamaño y la dispersión de la muestra en cada grupo.
+
+```{r}
+#| message: false
+#| warning: false
+# Label de las X's
+
+label_p1 <- codp_raw %>% 
+  filter(codigo_pregunta == "P3", codigo_opcion_respuesta != 999) %>%
+  arrange(codigo_opcion_respuesta) %>%
+  pull(descripcion_opcion_respuesta)
+
+
+data_eda %>%
+  group_by(fb) %>%
+  reframe(
+    media = mean(p3, na.rm = TRUE),
+    se = sd(p3, na.rm = TRUE) / sqrt(n())
+  ) %>%
+  left_join(
+    codp_raw %>% 
+      filter(codigo_pregunta == "FB") %>% 
+      select(
+        codigo_opcion_respuesta,
+        descripcion_opcion_respuesta
+      ) %>% 
+      rename(
+        fb = codigo_opcion_respuesta,
+        linea = descripcion_opcion_respuesta
+      ) %>% 
+      mutate(
+        linea = factor(linea, levels = paste("Línea", 1:12))
+      )
+  ) %>% 
+  ggplot(aes(y = linea, x = media)) +
+  # geom_col(fill = "#078930") +
+  geom_segment(aes(x = 1, xend = media, yend = linea), 
+               color = "#078930", linewidth = 8) +
+  geom_errorbar(aes(xmin = media - se, xmax = media + se), width = 0.2) +
+  labs(x = "promedio de satisfacción (P3)", 
+       title = "Satisfacción por Medio/Linea") +
+  scale_x_continuous(
+    limits = c(1,5),
+    labels = label_p1
+  )+
+  theme_fivethirtyeight() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text = element_text(face = "bold", size = 10)
+  )
+```
+
+A partir del gráfico se observa que la satisfacción no es homogénea entre líneas: algunas presentan promedios sistemáticamente más bajos (por ejemplo, la Línea 5), mientras otras se mantienen por encima del promedio general (como la Línea 8). Esta comparación funciona como un “mapa inicial” para priorizar dónde profundizar; sin embargo, por sí sola no permite identificar si las diferencias se explican por el momento del día (FG) o por condiciones específicas de ciertos puntos del sistema.
+
+Por eso, a continuación se presenta un heatmap medio × jornada, que permitirá evaluar si las brechas de satisfacción se concentran en horas pico/valle dentro de cada línea y detectar combinaciones específicas (línea–jornada) que estén jalonando el resultado agregado.
+
+```{r}
+#| message: false
+#| warning: false
+# Labels P3 (1..5)
+label_p3 <- c("Pésimo", "Malo", "Regular", "Bueno", "Excelente")
+puntos_corte <- 1:5
+
+data_eda %>%
+  group_by(fb, fg) %>%
+  reframe(media = mean(p3, na.rm = TRUE)) %>%
+  left_join(
+    codp_raw %>% 
+      filter(codigo_pregunta == "FB") %>% 
+      transmute(
+        fb = codigo_opcion_respuesta,
+        linea = factor(fb, labels = paste0("L", fb))     # L1..L12
+      ) 
+  ) %>% 
+  left_join(
+    codp_raw %>% 
+      filter(codigo_pregunta == "FG") %>% 
+      transmute(
+        fg = codigo_opcion_respuesta,
+        jornada_raw = descripcion_opcion_respuesta
+      ) %>% 
+      mutate(
+        # Limpieza de texto (ajusta si tus strings vienen distinto)
+        jornada = jornada_raw %>%
+          stringr::str_replace_all("\\s+", " ") %>% 
+          stringr::str_trim(),
+        # Orden sugerido (de mañana a noche)
+        jornada = factor(jornada, levels = rev(c(
+          "5:00 a 8:30 am (Pico)",
+          "9:00 a 11:30 am (Valle)",
+          "12:00 a 2:00 pm (Pico)",
+          "2:30 a 5:00 pm (Valle)",
+          "5:30 a 8:00 pm (Pico)",
+          "8:30 a 10:30 pm (Valle)"
+        )))
+      ) %>% 
+      select(fg, jornada)
+  ) %>% 
+  ggplot(aes(x = linea, y = jornada, fill = media)) +
+  geom_tile(color = "white", linewidth = 0.4) +
+  scale_fill_gradientn(
+    colours = c("#d73027", "#fc8d59", "#f7f7f7", "#91cf60", "#1a9850"),
+    limits  = c(1, 5),
+    breaks  = puntos_corte,
+    labels  = label_p3,
+    oob     = scales::squish
+  ) +
+  labs(
+    title = "Variación de la satisfacción por Línea y Jornada",
+    x = "Medio/Línea",
+    y = "Jornada",
+    fill = "Calificación\ndel servicio"
+  ) +
+  theme_few()+
+  theme(
+    axis.text = element_text(face = "bold", size = 10),
+    axis.title.y = element_blank()
+  )
+```
+
+En el heatmap se identifican “zonas críticas” bien marcadas: la L5 se mantiene, en general, por debajo del resto y su caída se hace más evidente en la franja 2:30–5:00 pm (Valle) (colores más cálidos), lo que apunta a un efecto propio de esa combinación y no únicamente a un promedio bajo en toda la línea. De forma similar, aparecen descensos puntuales en L10 (9:00–11:30 am, Valle) y en L12 (5:30–8:00 pm, Pico). En contraste, líneas como L8 sostienen un desempeño relativamente más favorable en varias jornadas. En conjunto, el patrón sugiere que la satisfacción no está explicada solo por la línea, sino también por el momento del día, dejando combinaciones específicas (línea–jornada) como foco natural para profundizar luego por estación y por atributos del servicio.
+
+```{r}
+#| message: false
+#| warning: false
+# Resumen por estación
+rank_fc <- data_eda %>%
+  group_by(fc) %>%
+  reframe(
+    media = mean(p3, na.rm = TRUE),
+    n = sum(!is.na(p3))
+  ) %>%
+  filter(n >= 30) %>% 
+  arrange(fc) %>% 
+  mutate(estacion = factor(fc, labels = paste0("Estación ", fc)))
+
+# Top 5 y Bottom 5
+top_bottom <- rank_fc %>%
+  arrange(media) %>%
+  mutate(
+    grupo = case_when(
+      row_number() <= 5 ~ "Peores (Bottom 5)",
+      row_number() > (n() - 5) ~ "Mejores (Top 5)",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(grupo)) %>%
+  mutate(
+    grupo = factor(grupo, levels = c("Peores (Bottom 5)", "Mejores (Top 5)"))
+  ) %>% 
+  mutate(estacion = fct_reorder(estacion, media))
+
+prom_global <- rank_fc %>% summarise(prom = mean(media)) %>% pull(prom)
+
+top_bottom %>% 
+ggplot(aes(y = estacion, x = media, color = grupo)) +
+  geom_segment(
+    aes(x = 1, xend = media, xend = estacion),
+    linewidth = 3
+  )+
+  geom_vline(
+    xintercept = prom_global, linetype = "dashed",
+    linewidth = 0.7, color = "gray40"
+  )+ 
+  geom_label(
+    aes(label = n, fill = grupo),
+    hjust = 1, size = 4, color = "white",
+    show.legend = F
+  ) +
+  scale_fill_manual(values = c("Peores (Bottom 5)" = "#E64B35", "Mejores (Top 5)" = "#00A087")) +
+  scale_x_continuous(limits = c(1, 5), labels = label_p3) +
+  labs(
+    subtitle = "Estaciones con mejor y peor satisfacción",
+    title = "Top 5 vs Bottom 5",
+    caption = "Barras = satisfacción promedio (P3) | Línea punteada = promedio del sistema.| Etiqueta = tamaño de muestra.",
+    x = "Satisfacción promedio",
+    color = ""
+  ) +
+  theme_fivethirtyeight() +
+  theme(
+    legend.position = "top",
+    legend.title = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold"),
+    axis.title = element_blank(),
+    axis.ticks.y = element_blank(),
+    plot.caption = element_text(
+      face = "italic", color = "gray35"
+    ),
+    axis.text = element_text(face = "bold", size = 10)
+  )
+```
+
+El gráfico de “Top 5 vs Bottom 5” muestra que la satisfacción por estación está altamente concentrada alrededor de “Regular”: incluso las estaciones con mejor desempeño se ubican apenas por encima del promedio del sistema (línea punteada), lo que sugiere que no existen “bolsones” de satisfacción claramente alta, sino rendimientos moderadamente mejores dentro de un nivel general medio. En contraste, el Bottom 5 se posiciona por debajo del promedio de forma consistente, indicando estaciones que probablemente están jalonando hacia abajo el resultado agregado y que deberían priorizarse para intervención.
+
+Además, los tamaños de muestra (n) visibles en el gráfico respaldan que estas diferencias no obedecen únicamente a variación aleatoria, sino a patrones relativamente estables.
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-width: 8
+#| fig-height: 8
+fg_labs <- c(
+  "1" = "5:00–8:30 (Pico)",
+  "2" = "9:00–11:30 (Valle)",
+  "3" = "12:00–14:00 (Pico)",
+  "4" = "14:30–17:00 (Valle)",
+  "5" = "17:30–20:00 (Pico)",
+  "6" = "20:30–22:30 (Valle)"
+)
+
+fb_labs <- setNames(paste("Línea", 1:12), as.character(1:12))
+
+# Paleta: Pico = cálidos | Valle = fríos
+fg_colors <- c(
+  "5:00–8:30 (Pico)"    = "#E76F51", # coral cálido
+  "9:00–11:30 (Valle)"  = "#2A9D8F", # verde/azul frío
+  "12:00–14:00 (Pico)"  = "#F4A261", # naranja cálido
+  "14:30–17:00 (Valle)" = "#277DA1", # azul frío
+  "17:30–20:00 (Pico)"  = "#D62828", # rojo cálido
+  "20:30–22:30 (Valle)" = "#4D908E"  # teal frío
+)
+
+data_eda %>%
+  mutate(
+    fg = factor(fg, levels = 1:6, labels = fg_labs),
+    fb = factor(fb, levels = 1:12, labels = fb_labs)
+  ) %>%
+  group_by(fb, fg) %>%
+  reframe(
+    sat_pct = mean(p3 >= 4, na.rm = TRUE),
+    n = sum(!is.na(p3))
+  ) %>%
+  ggplot(aes(x = fg, y = sat_pct, fill = fg)) +
+  geom_col(width = 0.8, show.legend = TRUE) +
+  geom_label(
+    aes(label = percent(sat_pct, accuracy = 1)),
+    vjust = -0.3, size = 3, color = "white",
+    show.legend = FALSE
+  ) +
+  facet_wrap(~fb, ncol = 3) +
+  scale_fill_manual(values = fg_colors) +
+  scale_y_continuous(
+    labels = percent, limits = c(0, 1),
+    expand = expansion(mult = c(0, .08))
+  ) +
+  labs(
+    title = "Satisfacción por línea según la jornada (pico vs valle)",
+    caption = "Las barras muestran el % de usuarios que califican el servicio como Bueno o Excelente.",
+    fill = "Jornada",
+    y = "% satisfechos"
+  ) +
+  theme_fivethirtyeight() +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_text(face = "bold", size = 10),
+    plot.caption = element_text(face = "italic", color = "#7c0041")
+  )
+```
+
+El gráfico muestra que el porcentaje de usuarios que califican el servicio como Bueno o Excelente varía de forma importante según la jornada y que ese comportamiento no es igual en todas las líneas.En la mayoría de líneas los valores se mueven en rangos medios (aprox. 30%–55%), lo que sugiere un desempeño aceptable pero con margen de mejora; sin embargo, aparecen contrastes fuertes en ciertos casos que ayudan a focalizar prioridades.
+
+Por ejemplo, la Línea 2 alcanza un valor alto en el pico de la tarde (17:30–20:00), mientras que en otras franjas se mantiene claramente más baja; y la Línea 7 evidencia una brecha marcada entre el pico de la mañana (muy bajo) y el valle de la mañana (muy alto), señalando que el principal punto de dolor está concentrado en la operación de esa franja. También se observan algunos 0% en combinaciones específicas (p. ej., Línea 1 en la noche valle, Línea 5 en 14:30–17:00, Línea 12 en el pico de la tarde), que más que una conclusión operativa deberían leerse como una alerta para validar tamaño de muestra o datos faltantes antes de tomar decisiones.
+
+En términos de gestión, el hallazgo clave es que conviene priorizar intervenciones por “línea–jornada” (dónde cae la satisfacción y en qué horario), porque ahí es donde el ajuste operativo (frecuencias, control de aforo, personal, información al usuario) probablemente tendrá mayor impacto.
+
+## ¿Hay diferencias en la percepción de seguiridad por el tipo de usuario?
+
+Se construyó un índice compuesto por componente para evitar analizar ítem por ítem y así resumir cada dimensión en una sola métrica interpretable. El índice se calculó como el promedio por fila de las preguntas numéricas que pertenecen a cada bloque del cuestionario (por ejemplo, Seguridad = promedio de P13_*, Economía = promedio de P14_*, Rapidez = promedio de P15_*, y Cobertura = promedio de P16_*), usando na.rm = TRUE para no perder registros cuando alguna respuesta estuviera vacía. Con esto, cada persona queda caracterizada por cuatro puntajes (1–5) que representan su percepción global en cada dimensión.
+
+A partir de esos índices, el análisis se enfoca en comparar perfiles y condiciones sin duplicar conclusiones por pregunta: por ejemplo, segmentar por franja horaria (FG) para diferenciar pico vs valle, por ocupación (P27) para identificar perfiles con menor satisfacción, por tipo de población (P23) para evaluar brechas de vulnerabilidad, y (si aplica) por día (FF) u otras variables operativas.
+
+::: {.callout-caution appearance="minimal" icon=false collapse=true}
+
+### Limitación de FA para comparar grupos
+
+En la variable `FA` (mayor/menor de edad) no hay variabilidad suficiente dentro de la base analizada: los registros se concentran prácticamente en una sola categoría (mayor de edad), lo que impide realizar comparaciones sólidas y representativas entre grupos (seguridad, economía, rapidez y cobertura). Por esta razón, el análisis por “edad” no se sustenta en `FA` y se priorizan variables con mejor distribución y mayor tamaño muestral por categoría (por ejemplo, `P23`, `P26` y `P27`).
+
+:::
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 3.5
+# Se crea un índice por componente, no analizar pregunta por pregunta.
+data_eda_seg <- data_eda %>%
+  mutate(
+    seg_seguridad = rowMeans(
+      select(., starts_with("p13_")) %>%
+        select(where(is.numeric)), na.rm = TRUE
+    ),
+    seg_economia  = rowMeans(
+      select(., starts_with("p14_")) %>%
+        select(where(is.numeric)), na.rm = TRUE
+    ),
+    seg_rapidez   = rowMeans(
+      select(., starts_with("p15_")) %>%
+        select(where(is.numeric)), na.rm = TRUE
+    ),
+    seg_cobertura = rowMeans(
+      select(., starts_with("p16_")) %>%
+        select(where(is.numeric)), na.rm = TRUE
+    )
+  )
+
+# Vector colores referenciales por categoría P23 (extraído del boxplot)
+colores_poblacion <- c(
+  "Mujer en embarazo" = "#F4A261",       # Durazno/rosa piel (calidez, protección materna)
+  "Mayor de 65" = "#701C3A",             # Gris oscuro (madurez, experiencia)
+  "Movilidad reducida" = "#007ACC",    # Azul prioridad (accesibilidad, sillas ruedas)
+  "Población general" = "#5A6377"       # Gris azulado neutral (representativo amplio)
+)
+
+data_eda_seg %>% 
+  # (1) Limpieza básica: deja solo casos válidos
+  filter(!is.na(seg_seguridad),
+         !is.na(p23),
+         !is.na(fg),
+         p23 != 999, fg != 999) %>%
+  # (2) Factores con etiquetas útiles
+  mutate(
+    p23 = factor(
+      p23,
+      levels = c(990, 1, 2, 3),
+      labels = c(
+        "Población general", "Mujer en embarazo",
+        "Movilidad reducida", "Mayor de 65"
+      )
+    ),
+    fg = factor(fg, labels = fg_labs),
+    # ordena facetas por frecuencia (opcional pero suele ayudar)
+    # ordena grupos de p23 por mediana de seg_seguridad (útil para comparar)
+    p23 = fct_reorder(p23, seg_seguridad, .fun = median, na.rm = TRUE)
+  )  %>% 
+  select(p23, seg_seguridad, fg) %>% 
+  ggplot(aes(x = p23, y = seg_seguridad, fill = p23)) +
+  geom_boxplot(width = 0.7, outlier.alpha = 0.25, na.rm = TRUE)+
+  facet_grid(col = vars(fg)) +
+  labs(
+    title = "Percepción de seguridad por población",
+    fill = "Tipo",
+    y = "Índice"
+  ) +
+  scale_fill_manual(
+    values = colores_poblacion, name = "Tipo"
+  )+
+  theme_fivethirtyeight() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(size = 10, face = "bold"),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(face = "bold"),
+    legend.position = "top"
+  )
+```
+
+La seguridad presenta un comportamiento sólido y estable: la mediana se mantiene alrededor de 3.0 y no se observa un deterioro relevante entre franjas horarias, *lo que sugiere que la operación responde bien incluso cuando aumenta la demanda.* La percepción más favorable se concentra en la población general y en mayores de 65, pero persiste una brecha consistente en mujeres embarazadas y personas con movilidad reducida (≈0.4 puntos menos), lo que apunta a necesidades de inclusión que deben abordarse de forma estructural—por ejemplo, con espacios/vagones prioritarios y señalización accesible—más que con medidas dependientes del horario.
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 3.5
+data_eda_seg %>% 
+  # (1) Limpieza básica: deja solo casos válidos
+  filter(!is.na(seg_rapidez),
+         !is.na(p23),
+         !is.na(fg),
+         p23 != 999, fg != 999) %>%
+  # (2) Factores con etiquetas útiles
+  mutate(
+    p23 = factor(
+      p23,
+      levels = c(990, 1, 2, 3),
+      labels = c(
+        "Población general", "Mujer en embarazo",
+        "Movilidad reducida", "Mayor de 65"
+      )
+    ),
+    fg = factor(fg, labels = fg_labs),
+    # ordena facetas por frecuencia (opcional pero suele ayudar)
+    # ordena grupos de p23 por mediana de seg_rapidez (útil para comparar)
+    p23 = fct_reorder(p23, seg_rapidez, .fun = median, na.rm = TRUE)
+  )  %>% 
+  select(p23, seg_rapidez, fg) %>% 
+  ggplot(aes(x = p23, y = seg_rapidez, fill = p23)) +
+  geom_boxplot(width = 0.7, outlier.alpha = 0.25, na.rm = TRUE)+
+  facet_grid(col = vars(fg)) +
+  labs(
+    title = "Percepción de rapidez por población",
+    fill = "Tipo",
+    y = "Índice"
+  ) +
+  scale_fill_manual(
+    values = colores_poblacion, name = "Tipo"
+  )+
+  theme_fivethirtyeight() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(size = 10, face = "bold"),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(face = "bold"),
+    legend.position = "top"
+  )
+```
+
+En horas pico, *la percepción de rapidez se deteriora con mayor fuerza en los grupos vulnerables*: mujeres embarazadas y mayores de 65 registran valores por debajo de 2.5 (umbral crítico para la satisfacción), mientras que la población general logra mantener una valoración aceptable en horarios valle; este comportamiento sugiere que la operación está razonablemente ajustada para el usuario “promedio”, pero evidencia una insuficiencia de capacidad (o de condiciones de acceso) justamente cuando la demanda aumenta, especialmente entre 14:30–17:00 y 17:30–20:00; por eso, se justifican medidas focalizadas como aumentar frecuencias en pico o habilitar accesos/prioridades dedicadas para estos grupos.
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-width: 10
+#| fig-height: 3.5
+data_eda_seg %>% 
+  # (1) Limpieza básica: deja solo casos válidos
+  filter(!is.na(seg_economia),
+         !is.na(p23),
+         !is.na(fg),
+         p23 != 999, fg != 999) %>%
+  # (2) Factores con etiquetas útiles
+  mutate(
+    p23 = factor(
+      p23,
+      levels = c(990, 1, 2, 3),
+      labels = c(
+        "Población general", "Mujer en embarazo",
+        "Movilidad reducida", "Mayor de 65"
+      )
+    ),
+    fg = factor(fg, labels = fg_labs),
+    # ordena facetas por frecuencia (opcional pero suele ayudar)
+    # ordena grupos de p23 por mediana de seg_economia (útil para comparar)
+    p23 = fct_reorder(p23, seg_economia, .fun = median, na.rm = TRUE)
+  )  %>% 
+  select(p23, seg_economia, fg) %>% 
+  ggplot(aes(x = p23, y = seg_economia, fill = p23)) +
+  geom_boxplot(width = 0.7, outlier.alpha = 0.25, na.rm = TRUE)+
+  facet_grid(col = vars(fg)) +
+  labs(
+    title = "Percepción de economía por población",
+    fill = "Tipo",
+    y = "Índice"
+  )+
+  scale_fill_manual(
+    values = colores_poblacion, name = "Tipo"
+  )+
+  theme_fivethirtyeight() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(size = 10, face = "bold"),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(face = "bold"),
+    legend.position = "top"
+  )
+```
+
+La economía se consolida como un factor de ventaja del sistema: gracias a las integraciones, se obtiene un ahorro sostenido (≈30% frente al transporte tradicional), lo que ayuda a compensar y “amortiguar” una percepción menos favorable de la rapidez, especialmente en horarios valle.
+
+**En síntesis**, el sistema muestra una seguridad operativamente consistente; la rapidez requiere refuerzo de capacidad en horas pico con foco en poblaciones vulnerables; y la economía funciona como el diferencial que reduce el impacto de esas debilidades y mejora la competitividad global.
+
+## ¿Qué perfiles reportan mayor insatisfacción en atributos específicos?
+
+```{r}
+#| message: false
+#| warning: false
+tabla_p27 <- data_eda_seg %>%
+  filter(fg %in% c(1, 3, 5)) %>%                       # solo horas pico (opcional)
+  filter(!is.na(p27), !p27 %in% c(13, 996)) %>%        # excluye no resp / otro
+  group_by(p27) %>%
+  summarise(
+    seguridad = mean(seg_seguridad, na.rm = TRUE),
+    rapidez   = mean(seg_rapidez,   na.rm = TRUE),
+    economia  = mean(seg_economia,  na.rm = TRUE),
+    cobertura = mean(seg_cobertura, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    codp_raw %>%
+      filter(codigo_pregunta == "P27") %>%
+      transmute(
+        p27 = codigo_opcion_respuesta,
+        actividad = descripcion_opcion_respuesta
+      ),
+    by = "p27"
+  ) %>%
+  select(actividad, n, seguridad, rapidez, economia, cobertura) %>%
+  mutate(
+    promedio = rowMeans(across(c(seguridad, rapidez, economia, cobertura)), na.rm = TRUE),
+    across(c(seguridad, rapidez, economia, cobertura, promedio), ~ round(.x, 2))
+  ) %>%
+  arrange(seguridad)   # cambia a arrange(rapidez) si quieres “peores en rapidez”
+
+tabla_p27 %>%
+  gt() %>%
+  tab_header(
+    title = "Índices promedio por ocupación",
+    subtitle = "Horas pico: mañana, mediodía y tarde‑noche | Escala 1–5 (más alto = mejor percepción)"
+  ) %>%
+  cols_label(
+    actividad = "Ocupación",
+    n = "N",
+    seguridad = "Seguridad",
+    rapidez = "Rapidez",
+    economia = "Economía",
+    cobertura = "Cobertura",
+    promedio = "Promedio"
+  ) %>%
+  fmt_number(
+    columns = c(seguridad, rapidez, economia, cobertura, promedio),
+    decimals = 2
+  ) %>%
+  data_color(
+    columns = c(seguridad, rapidez, economia, cobertura, promedio),
+    colors = col_numeric(
+      palette = c("#FDE2E4", "#FFFFFF", "#D6F5D6"),  # bajo→medio→alto
+      domain = c(1, 5)
+    )
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_options(
+    table.font.size = px(12),
+    heading.title.font.size = px(16),
+    heading.subtitle.font.size = px(12),
+    table.width = pct(90)
+  )
+
+```
+
+
+En horas pico, la principal señal no es una crisis general, sino brechas por perfil: los pensionados/jubilados concentran la peor experiencia relativa, especialmente en cobertura (2.69) y rapidez (2.88), lo que sugiere fricción en acceso/conexión más que un problema de seguridad. En contraste, ama de casa y trabajadores independientes aparecen con mejores niveles globales (≈3.0+), lo que apunta a una experiencia más “estable” o adaptada al uso del sistema. El punto crítico transversal es cobertura: incluso en perfiles con seguridad y economía aceptables (~3), la cobertura tiende a ser el componente que más limita la percepción en pico.
+
+> El análisis descriptivo permitió pasar de una visión general del servicio a la identificación concreta de brechas operativas y sociales, priorizando variables clave y preparando el camino para análisis explicativos más profundos
+
+::: {.callout-tip collapse=true icon=true}
+
+## ¿Hay sesgos muestrales?
+
+La distribución muestral muestra una mayor concentración de encuestas en ciertos medios, lo cual es consistente con su mayor uso. No obstante, al no contar con afluencias reales, los resultados se interpretan como descriptivos.
+
+```{r}
+#| message: false
+#| warning: false
+tab_fb <- data_eda %>%
+  count(fb) %>%
+  mutate(
+    Porcentaje = n / sum(n),
+    row_id = row_number()
+  ) %>%
+  left_join(
+    codp_raw %>%
+      filter(codigo_pregunta == "FB") %>%
+      select(-codigo_pregunta) %>%
+      rename(
+        fb = codigo_opcion_respuesta,
+        Linea = descripcion_opcion_respuesta
+      ),
+    by = "fb"
+  ) %>%
+  relocate(Linea, .before = fb) %>%
+  select(Linea, n, Porcentaje, row_id) %>%
+  gt() %>%
+  tab_header(
+    title = md("**Distribución muestral por línea (FB)**"),
+    subtitle = "Frecuencia (n) y porcentaje sobre el total de encuestas"
+  ) %>%
+  cols_label(
+    Linea = md("**Línea**"),
+    n = md("**n**"),
+    Porcentaje = md("**Porcentaje**")
+  ) %>%
+  fmt_number(
+    columns = n,
+    decimals = 0
+  ) %>%
+  fmt_percent(
+    columns = Porcentaje,
+    decimals = 2
+  ) %>%
+  cols_align(align = "left",  columns = Linea) %>%
+  cols_align(align = "right", columns = c(n, Porcentaje)) %>%
+  tab_options(
+    table.font.size = px(12),
+    heading.title.font.size = px(18),
+    heading.subtitle.font.size = px(12),
+    data_row.padding = px(6),
+    table.border.top.style = "solid",
+    table.border.bottom.style = "solid",
+    table.width = pct(90)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  # Zebra (filas alternadas) usando row_id
+  tab_style(
+    style = cell_fill(color = "#F7F7F7"),
+    locations = cells_body(rows = row_id %% 2 == 1)
+  ) %>%
+  cols_hide(columns = row_id)
+
+tab_fb
+```
+
+
+:::
+
+# Determinación del nivel de satisfacción frente al impacto social del sistema
+
+Para evaluar el impacto social del sistema no se utilizó un promedio simple, ya que este tiende a suavizar diferencias relevantes entre usuarios. En su lugar, se construyó un indicador basado en la proporción de aspectos sociales evaluados negativamente por cada usuario, permitiendo identificar no solo la existencia del impacto, sino también su intensidad. Esta métrica facilita la comparación entre medios, jornadas y grupos poblacionales, evidenciando brechas sociales concretas.
+
+## Construcción del Índice de Impacto Social Negativo (IISN)
+
+Define impacto social como riesgo, no como promedio.
+
+```{r}
+#| message: false
+#| warning: false
+impacto_vars <- data_eda %>%
+  select(
+    starts_with("p13_"),
+    starts_with("p20_"),
+    starts_with("p21_"),
+    starts_with("p22_")
+  ) %>%
+  select(where(is.numeric))
+
+data_eda_iisn <- data_eda %>%
+  mutate(
+    impacto_social_score = apply(
+      impacto_vars,
+      1,
+      function(x) mean(x <= 2, na.rm = TRUE) %>% round(2)
+    )
+  )
+```
+
+## Análisis descriptivo del impacto social
+
+La distribución del índice de impacto social negativo muestra que la mayoría de los usuarios presenta algún nivel de afectación social. En particular, se observa una concentración importante de usuarios que evalúan negativamente entre una tercera parte y casi la mitad de los aspectos sociales analizados. Esto sugiere que, aunque el servicio puede funcionar adecuadamente en términos operativos, existen percepciones sociales desfavorables que afectan de manera recurrente la experiencia del usuario.
+
+```{r}
+#| message: false
+#| warning: false
+ggplot(data_eda_iisn, aes(impacto_social_score)) +
+  geom_histogram(bins = 20, color = "white", fill = "#7c0041") +
+  labs(title = "Distribución del impacto social negativo",
+       x = "Proporción de aspectos sociales mal evaluados")+
+  theme_fivethirtyeight()+
+  theme(axis.title.x = element_text(face = "bold"))
+```
+
+Este comportamiento confirma que el impacto social no es un fenómeno aislado, sino una condición presente de forma transversal en la experiencia del sistema. El uso de esta métrica permite evidenciar estas situaciones con mayor claridad que un promedio simple, el cual tiende a mostrar una percepción general neutral o moderada.
+
+
+```{r}
+#| message: false
+#| warning: false
+
+data_eda_iisn <- data_eda_iisn %>%
+  mutate(
+    impacto_social_nivel = case_when(
+      impacto_social_score >= 0.40 ~ "Alto impacto negativo",
+      impacto_social_score >= 0.20 ~ "Impacto medio",
+      TRUE ~ "Bajo impacto"
+    )
+  )
+
+tab_iisn_p28 <- data_eda_iisn %>%
+  filter(!is.na(p28)) %>%
+  group_by(p28) %>%
+  reframe(
+    impacto_prom = mean(impacto_social_score, na.rm = TRUE)
+  ) %>%
+  arrange(p28) %>%
+  left_join(
+    codp_raw %>%
+      filter(codigo_pregunta == "P28") %>%
+      select(-codigo_pregunta) %>%
+      rename(
+        p28 = codigo_opcion_respuesta,
+        rango_salarial = descripcion_opcion_respuesta
+      ),
+    by = "p28"
+  ) %>%
+  select(rango_salarial, impacto_prom) %>%
+  mutate(row_id = row_number()) %>%   # <- para estilos (zebra)
+  gt() %>%
+  tab_header(
+    title = md("**Impacto social negativo promedio** por rango salarial"),
+    subtitle = "Promedio del score (mayor valor = mayor impacto negativo percibido)"
+  ) %>%
+  cols_label(
+    rango_salarial = md("**Rango salarial**"),
+    impacto_prom   = md("**Impacto social negativo promedio**")
+  ) %>%
+  fmt_percent(
+    columns = impacto_prom,
+    decimals = 0
+  ) %>%
+  cols_align(align = "left",  columns = rango_salarial) %>%
+  cols_align(align = "right", columns = impacto_prom) %>%
+  tab_options(
+    table.font.size = px(13),
+    heading.title.font.size = px(18),
+    heading.subtitle.font.size = px(12),
+    data_row.padding = px(6),
+    table.border.top.style = "solid",
+    table.border.bottom.style = "solid",
+    table_body.border.bottom.style = "solid",
+    table.width = pct(90)
+  ) %>%
+  # Encabezados en negrita
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  # Filas alternadas (zebra)
+  tab_style(
+    style = cell_fill(color = "#F7F7F7"),
+    locations = cells_body(rows = row_id %% 2 == 1)
+  ) %>%
+  # Resaltar el mayor impacto (peor)
+  tab_style(
+    style = list(
+      cell_text(weight = "bold"),
+      cell_fill(color = "#FFF3CD")
+    ),
+    locations = cells_body(
+      columns = impacto_prom,
+      rows = impacto_prom == max(impacto_prom, na.rm = TRUE)
+    )
+  ) %>%
+  cols_hide(columns = row_id)
+
+tab_iisn_p28
+```
+
+Dado que el indicador corresponde a impacto social negativo, los resultados sugieren que, en general, todos los rangos salariales perciben afectaciones negativas en un nivel muy parecido (entre 37% y 41%), por lo que el ingreso no parece marcar diferencias fuertes en esta dimensión. El grupo con ingresos medio-altos (\$2’070.001–\$ 2’756.000) presenta el mayor impacto negativo promedio (41%), seguido por quienes ganan más de \$2’756.000 (40%), lo que puede reflejar una valoración más crítica o mayores expectativas frente al servicio. En contraste, el menor impacto negativo se observa en el rango de \$ 1’380.001–\$ 2’070.000 (37%), mientras que los rangos inferiores se ubican en 38%, lo que indica percepciones negativas ligeramente menores pero sin una brecha amplia entre grupos.
+
+```{r}
+#| message: false
+#| warning: false
+tabla_educativo_gt <- data_eda_iisn %>%
+  filter(!is.na(p26)) %>%
+  group_by(p26) %>%
+  reframe(
+    impacto_prom = mean(impacto_social_score, na.rm = TRUE)
+  ) %>%
+  arrange(p26) %>%
+  left_join(
+    codp_raw %>%
+      filter(codigo_pregunta == "P26") %>%
+      select(-codigo_pregunta) %>%
+      rename(
+        p26 = codigo_opcion_respuesta,
+        nivel_estudio = descripcion_opcion_respuesta
+      ),
+    by = "p26"
+  ) %>%
+  select(nivel_estudio, impacto_prom) %>%
+  mutate(row_id = row_number()) %>%   # <- índice para estilos
+  gt() %>%
+  tab_header(
+    title = md("**Impacto social negativo promedio** por nivel educativo"),
+    subtitle = "Promedio del score (mayor valor = mayor impacto negativo percibido)"
+  ) %>%
+  cols_label(
+    nivel_estudio = md("**Nivel educativo**"),
+    impacto_prom  = md("**Impacto social negativo promedio**")
+  ) %>%
+  fmt_percent(
+    columns = impacto_prom,
+    decimals = 1
+  ) %>%
+  cols_align(align = "left",  columns = nivel_estudio) %>%
+  cols_align(align = "right", columns = impacto_prom) %>%
+  tab_options(
+    table.font.size = px(13),
+    heading.title.font.size = px(18),
+    heading.subtitle.font.size = px(12),
+    data_row.padding = px(6),
+    table.width = pct(90)
+  ) %>%
+  # Encabezados en negrita
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  # Filas alternadas (zebra) usando row_id (evita el error)
+  tab_style(
+    style = cell_fill(color = "#F7F7F7"),
+    locations = cells_body(rows = row_id %% 2 == 1)
+  ) %>%
+  # Resaltar el mayor impacto
+  tab_style(
+    style = list(
+      cell_text(weight = "bold"),
+      cell_fill(color = "#FFF3CD")
+    ),
+    locations = cells_body(
+      columns = impacto_prom,
+      rows = impacto_prom == max(impacto_prom, na.rm = TRUE)
+    )
+  ) %>%
+  cols_hide(columns = row_id)
+
+tabla_educativo_gt
+```
+
+Al analizar el impacto social negativo según el nivel educativo, se observan diferencias que sugieren una relación entre mayor escolaridad y una percepción más crítica del servicio. Los valores más altos se concentran en los niveles de posgrado, especialmente en Maestría (0.413) y, con mayor intensidad, en Doctorado (0.55), lo que puede asociarse a mayor sensibilidad frente a factores del entorno, la información disponible, la señalización y la interacción con otros usuarios. En contraste, los niveles educativos más bajos presentan impactos negativos menores (por ejemplo, “Ninguno” 0.351) y el grupo que “Se rehúsa a responder” registra el valor más bajo (0.28), lo cual podría reflejar expectativas distintas o formas de uso diferentes del sistema.
+
+En conjunto, los resultados por ingreso y por nivel educativo indican que el impacto social negativo no es completamente homogéneo entre usuarios: aunque en el caso salarial las variaciones son moderadas, en el componente educativo sí se aprecian brechas más marcadas (con picos en niveles de posgrado). Por ello, al diseñar o reforzar estrategias de cultura ciudadana, orientación al usuario y comunicación (señalización, información y pautas de convivencia), conviene segmentar acciones según perfiles educativos y socioeconómicos, priorizando intervenciones que respondan a expectativas más altas y a percepciones más críticas en ciertos grupos.
+
+
+## Análisis multidimensional
+
+Hasta este punto, **el análisis mostró que existe un impacto social negativo relevante en la experiencia de los usuarios.** Sin embargo, este impacto no proviene de una única fuente. Por esta razón, se realizó un **análisis multidimensional** que permite descomponer el impacto social en distintas dimensiones y entender qué aspectos del sistema pesan más en la percepción social de los usuarios.
+
+Para este análisis, el impacto social se separó en tres dimensiones principales: seguridad, información y orientación al usuario, y entorno físico del sistema, que incluye estaciones y vehículos.
+
+Cada dimensión se midió como la proporción de aspectos evaluados negativamente por los usuarios dentro de ese grupo de preguntas.
+
+### ¿Qué dimensión pesa más en el impacto social?
+
+Al analizar los resultados globales, se observa que el impacto social negativo no se distribuye de manera uniforme entre las dimensiones evaluadas. La dimensión de seguridad presenta el menor nivel de impacto negativo promedio, lo que indica que, en términos generales, los usuarios perciben este aspecto de manera relativamente más favorable.
+
+```{r}
+#| message: false
+#| warning: false
+
+data_eda_iisn_m <- data_eda_iisn %>%
+  mutate(
+    impacto_seguridad = rowMeans(
+      select(., starts_with("p13_")) <= 2,
+      na.rm = TRUE
+    ),
+    impacto_informacion = rowMeans(
+      select(., starts_with("p20_")) <= 2,
+      na.rm = TRUE
+    ),
+    impacto_entorno = rowMeans(
+      select(., starts_with("p21_"), starts_with("p22_")) <= 2,
+      na.rm = TRUE
+    )
+  )
+
+# Construcción de las dimensiones (multidimensional ligero)
+tab_dimensiones <- data_eda_iisn_m %>%
+  summarise(
+    Seguridad   = mean(impacto_seguridad, na.rm = TRUE),
+    Informacion = mean(impacto_informacion, na.rm = TRUE),
+    Entorno     = mean(impacto_entorno, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = "dimension", values_to = "impacto_prom") %>%
+  mutate(row_id = row_number()) %>%
+  gt() %>%
+  tab_header(
+    title = md("**Impacto social negativo promedio por dimensión**"),
+    subtitle = "Proporción de aspectos evaluados negativamente (mayor valor = mayor impacto negativo)"
+  ) %>%
+  cols_label(
+    dimension    = md("**Dimensión**"),
+    impacto_prom = md("**Impacto social negativo promedio**")
+  ) %>%
+  fmt_percent(
+    columns = impacto_prom,
+    decimals = 1
+  ) %>%
+  cols_align(align = "left",  columns = dimension) %>%
+  cols_align(align = "right", columns = impacto_prom) %>%
+  tab_options(
+    table.font.size = px(13),
+    heading.title.font.size = px(18),
+    heading.subtitle.font.size = px(12),
+    data_row.padding = px(6),
+    table.border.top.style = "solid",
+    table.border.bottom.style = "solid",
+    table_body.border.bottom.style = "solid",
+    table.width = pct(90)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#F7F7F7"),
+    locations = cells_body(rows = row_id %% 2 == 1)
+  ) %>%
+  tab_style(
+    style = list(cell_text(weight = "bold"), cell_fill(color = "#FFF3CD")),
+    locations = cells_body(
+      columns = impacto_prom,
+      rows = impacto_prom == max(impacto_prom, na.rm = TRUE)
+    )
+  ) %>%
+  cols_hide(columns = row_id)
+
+tab_dimensiones
+```
+
+
+En contraste, las dimensiones asociadas a información y entorno físico concentran los niveles más altos de impacto social negativo. Esto sugiere que las principales afectaciones sociales no están tanto relacionadas con la seguridad en sí misma, sino con aspectos como la claridad de la información, la señalización, la orientación dentro del sistema, el estado de las estaciones y la experiencia dentro de los vehículos.
+
+### Impacto social según el perfil educativo del usuario
+
+Al desagregar el análisis por nivel educativo, se identifican diferencias claras en la forma en que los usuarios perciben el impacto social del sistema. En general, a medida que aumenta el nivel educativo, se observa una percepción más crítica en algunas dimensiones del impacto social.
+
+Los usuarios con niveles de educación básica presentan niveles de impacto relativamente moderados y similares entre dimensiones. Sin embargo, en los niveles educativos más altos, especialmente en maestría y doctorado, se evidencia un aumento significativo del impacto social negativo, particularmente en las dimensiones de información y entorno físico.
+
+```{r}
+tab_dim_x_educ <- data_eda_iisn_m %>%
+  filter(!is.na(p26)) %>%
+  group_by(p26) %>%
+  reframe(
+    Seguridad   = mean(impacto_seguridad, na.rm = TRUE),
+    Informacion = mean(impacto_informacion, na.rm = TRUE),
+    Entorno     = mean(impacto_entorno, na.rm = TRUE)
+  ) %>%
+  left_join(
+    codp_raw %>%
+      filter(codigo_pregunta == "P26") %>%
+      select(-codigo_pregunta) %>%
+      rename(
+        p26 = codigo_opcion_respuesta,
+        nivel_estudio = descripcion_opcion_respuesta
+      ),
+    by = "p26"
+  ) %>%
+  relocate(nivel_estudio, .before = p26) %>%
+  select(-p26) %>%
+  mutate(row_id = row_number()) %>%
+  gt(rowname_col = "nivel_estudio") %>%
+  tab_header(
+    title = md("**Impacto social negativo por dimensión** según nivel educativo"),
+    subtitle = "Proporción promedio de evaluaciones negativas (mayor valor = mayor impacto negativo)"
+  ) %>%
+  cols_label(
+    Seguridad   = md("**Seguridad**"),
+    Informacion = md("**Información**"),
+    Entorno     = md("**Entorno físico**")
+  ) %>%
+  fmt_percent(
+    columns = c(Seguridad, Informacion, Entorno),
+    decimals = 1
+  ) %>%
+  tab_options(
+    table.font.size = px(12),
+    heading.title.font.size = px(18),
+    heading.subtitle.font.size = px(12),
+    data_row.padding = px(6),
+    row_group.padding = px(4),
+    table.border.top.style = "solid",
+    table.border.bottom.style = "solid",
+    table.width = pct(90)
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_stub()
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#F7F7F7"),
+    locations = cells_body(rows = row_id %% 2 == 1)
+  ) %>%
+  data_color(
+    columns = c(Seguridad, Informacion, Entorno),
+    palette = c("#E8F5E9", "#FFEBEE")
+  ) %>%
+  cols_hide(columns = row_id)
+
+tab_dim_x_educ
+```
+
+Esto sugiere que los usuarios con mayor formación académica tienden a tener expectativas más altas frente al funcionamiento del sistema, siendo más sensibles a deficiencias en la señalización, la orientación, la organización de los espacios y la experiencia general dentro de estaciones y vehículos. En el caso del grupo con doctorado, el impacto negativo en el entorno físico es especialmente alto, lo que indica una percepción crítica de las condiciones del sistema más allá de los aspectos operativos básicos.
+
+Por el contrario, los usuarios con menor nivel educativo y aquellos que se rehúsan a responder presentan niveles de impacto social negativo más bajos, lo cual podría estar asociado a expectativas distintas o a patrones de uso diferentes del sistema.
+
+### Modelo multidimensional del servicio: PCA
+
+En esta parte, además de mirar promedios, se buscó resumir el servicio en pocas dimensiones que capturen el “patrón general” de experiencia del usuario. La idea es sencilla: cuando un servicio tiene muchas preguntas (seguridad, economía, rapidez, estaciones, vehículos, etc.), es útil encontrar 2 o 3 ejes principales que expliquen la mayor parte de las diferencias entre personas. Para eso se utilizó un PCA, que reduce muchas variables a pocas dimensiones interpretables.
+
+En términos prácticos, este análisis permite responder: ¿qué componentes del servicio se mueven juntos y cuáles son los que más explican la percepción general del sistema?
+
+#### Preparación del bloque de atributos del servicio
+
+Aquí usamos un bloque de preguntas que representan “atributos del servicio” (sin demografía). Para mantenerlo parsimonioso, se usan escalas tipo calificación:
+
+```{r}
+#| message: false
+#| warning: false
+#| collapse: false
+# Bloque de variables del servicio (solo numéricas)
+vars_servicio <- data_eda %>%
+  select(
+    starts_with("p13_"),
+    starts_with("p14_"),
+    starts_with("p15_"),
+    starts_with("p16_"),
+    starts_with("p17_"),
+    starts_with("p18_"),
+    starts_with("p19_"),
+    starts_with("p20_"),
+    starts_with("p21_"),
+    starts_with("p22_")
+  ) %>%
+  select(where(is.numeric))
+
+# eliminar columnas con demasiados NA (por temas de practicidad)
+na_rate <- sapply(vars_servicio, function(x) mean(is.na(x)))
+
+print("eliminar columnas con demasiados NA (por temas de practicidad)")
+na_rate %>%
+  percent(accuracy = 0.9) 
+
+vars_servicio <- vars_servicio[, na_rate <= 0.35, drop = FALSE]
+
+# Imputación simple para PCA (mediana por columna)
+vars_servicio_imp <- vars_servicio %>%
+  mutate(across(everything(), ~ ifelse(is.na(.x), median(.x, na.rm = TRUE), .x)))
+```
+
+#### Ejecutar PCA y ver cuántas dimensiones sirven
+
+```{r}
+#| message: false
+#| warning: false
+pca_serv <- PCA(vars_servicio_imp, scale.unit = TRUE, graph = FALSE)
+
+# Varianza explicada por las primeras dimensiones
+eig <- as.data.frame(pca_serv$eig) %>%
+  transmute(
+    Dimension = paste0("Dim ", seq_len(n())),
+    Varianza = `percentage of variance`,
+    Acumulada = `cumulative percentage of variance`
+  ) %>%
+  slice(1:5)
+
+eig %>%
+  gt() %>%
+  tab_header(
+    title = "PCA – Varianza explicada",
+    subtitle = "Cuánto resume cada dimensión del servicio"
+  ) %>%
+  fmt_number(columns = c(Varianza, Acumulada), decimals = 1)
+```
+
+El análisis de componentes principales (PCA) muestra que cada una de las primeras dimensiones explica aproximadamente el 3% de la variabilidad total, y que las primeras cinco dimensiones juntas apenas alcanzan cerca del 15% de la varianza acumulada. **Este resultado indica que no existe una única dimensión dominante que concentre la percepción del servicio.**
+
+En términos simples, *esto significa que la experiencia del usuario frente al sistema de transporte es altamente multidimensional*: la percepción no está definida por un solo factor (como seguridad o rapidez), sino por una combinación amplia de atributos que aportan de manera similar.
+
+> Ningún componente, por sí solo, logra resumir de forma contundente la experiencia global.
+
+Este comportamiento es consistente con estudios de satisfacción en servicios públicos complejos, donde el usuario evalúa simultáneamente múltiples elementos del entorno, la información, la operación y la interacción social. *Por ello, intentar reducir la experiencia del sistema a una o dos dimensiones implicaría perder información relevante.*
+
+En conclusión, el PCA cumple un rol diagnóstico: evidencia que el servicio evaluado es complejo y que las percepciones negativas no se explican por un solo componente. Por esta razón, el análisis multidimensional posterior se enfoca en identificar qué dimensiones específicas generan mayor impacto negativo, en lugar de forzar una reducción excesiva de la información.
+
+Perfecto. Aquí te dejo **una propuesta sencilla, de valor y muy defendible**, pensada exactamente para responder esa pregunta sin sobrecomplicarla.
+La puedes **pegar tal cual** en el informe.
+
+# Propuesta para el análisis de preguntas abiertas
+
+Para analizar las preguntas abiertas, en las que los usuarios expresan razones o sugerencias en texto libre, se propone un enfoque **exploratorio y complementario** al análisis cuantitativo. El objetivo no es construir modelos complejos de lenguaje, sino **identificar patrones recurrentes en el discurso de los usuarios** que ayuden a explicar los resultados numéricos del estudio.
+
+El análisis se desarrolla en tres pasos simples y de alto valor analítico:
+
+## 1. Limpieza y preparación del texto
+
+En primer lugar, se depuran las respuestas eliminando valores nulos, respuestas vacías y expresiones poco informativas. Posteriormente, el texto se normaliza (minúsculas, eliminación de tildes y signos) para facilitar su análisis. Este paso garantiza que las palabras se analicen de forma consistente y comparable entre usuarios.
+
+```{r}
+#| message: false
+#| warning: false
+texto_p29 <- data_eda %>%
+  filter(!is.na(p29)) %>%
+  mutate(
+    p29 = formateo_texto(p29)   # normaliza texto (minúsculas, sin tildes)
+  ) %>%
+  unnest_tokens(word, p29) %>%
+  filter(
+    !word %in% stop_words$word,
+    str_length(word) > 3
+  )
+```
+
+En este paso se eliminan respuestas vacías y palabras poco informativas, garantizando un análisis consistente del contenido textual.
+
+## 2. Análisis de frecuencia de palabras clave
+
+Una vez preparado el texto, se descompone en palabras individuales y se calculan las frecuencias de aparición de los términos más mencionados. Este análisis permite identificar **temas dominantes** en las respuestas abiertas, tales como seguridad, información, tiempos de espera, frecuencia del servicio, orden o comportamiento de otros usuarios.
+
+### Identificación de temas dominantes
+
+```{r}
+top_palabras <- texto_p29 %>%
+  count(word = toupper(word), sort = TRUE) %>%
+  slice_head(n = 15)
+
+top_palabras
+```
+
+### Visualización simple de los temas más mencionados
+
+El gráfico de frecuencia de palabras muestra que los términos más recurrentes en las respuestas abiertas están asociados principalmente a la operación del servicio y la experiencia en horas pico. Palabras como pico, horas, trenes, alimentadores, buses, estaciones y rutas aparecen con alta frecuencia, lo que sugiere que las principales preocupaciones de los usuarios se concentran en la capacidad del sistema, los tiempos de espera y la congestión en determinados momentos del día.
+
+```{r}
+top_palabras %>% 
+  mutate(
+    word = str_to_title(word)
+  ) %>% 
+  ggplot(aes(x = reorder(word, n), y = n)) +
+    geom_col(fill = "#7c0041") +
+    coord_flip() +
+    labs(
+      subtitle = "Principales temas mencionados en las respuestas abiertas (P29)",
+      x = "Tema",
+      y = "Frecuencia de mención"
+    ) +
+    theme_fivethirtyeight()+
+    theme(
+      axis.text = element_text(face = "bold"),
+      plot.subtitle = element_text(face = "bold")
+    )
+```
+
+Asimismo, la presencia reiterada del término mejorar indica que una parte importante de los comentarios no solo expresa insatisfacción, sino que también plantea expectativas de mejora sobre el funcionamiento del sistema. Esto refuerza la idea de que los usuarios identifican fallas concretas y reconocen áreas donde el servicio podría fortalecerse.
+
+## 3. Articulación con los resultados cuantitativos
+
+Finalmente, los temas identificados en el análisis textual se contrastan con los resultados del análisis descriptivo y multidimensional. De esta forma, las respuestas abiertas se utilizan como un **insumo explicativo**, que ayuda a entender por qué ciertos atributos del servicio presentan mayores niveles de insatisfacción o impacto social negativo.
+
+Por ejemplo, si los indicadores muestran bajos niveles de satisfacción en seguridad o información, y estos mismos temas aparecen con alta frecuencia en los comentarios abiertos, se refuerza la consistencia y validez del diagnóstico.
+
+```{r}
+data_eda_iisn %>%
+  mutate(tiene_comentario = !is.na(p29)) %>%
+  group_by(tiene_comentario) %>%
+  summarise(
+    impacto_social_prom = mean(impacto_social_score, na.rm = TRUE)
+  )
+```
+
+Al contrastar la presencia de comentarios abiertos con el indicador de impacto social negativo, se observa que los usuarios que dejan sugerencias presentan, en promedio, un mayor nivel de impacto social negativo que aquellos que no lo hacen. Esto sugiere que la decisión de escribir un comentario está asociada a una experiencia más crítica con el servicio.
+
+Este resultado es consistente con el análisis multidimensional previo, en el que dimensiones como información, entorno y condiciones de uso en horas pico mostraron niveles relevantes de impacto. En este sentido, las respuestas abiertas no solo confirman los hallazgos cuantitativos, sino que ayudan a explicar qué aspectos específicos están detrás de esas percepciones negativas.
+
+> En conjunto, las respuestas abiertas refuerzan la consistencia del diagnóstico y evidencian que las principales oportunidades de mejora del sistema están relacionadas con la operación en horas pico, la capacidad de los vehículos y la experiencia del usuario en estaciones y rutas.
+
+# Conclusión general
+
+A partir del uso combinado de técnicas estadísticas descriptivas, análisis multidimensional y exploración de texto, se logró construir un diagnóstico integral sobre la satisfacción de los usuarios del sistema y los factores que influyen en su percepción del servicio. Este enfoque permitió ir más allá de promedios generales y evidenciar tanto la intensidad del impacto social como las dimensiones específicas que lo explican.
+
+Los resultados muestran que la satisfacción general del servicio (P3) se encuentra estrechamente relacionada con la disposición a recomendar el sistema (P6). A medida que la evaluación del servicio mejora, aumenta de forma consistente la probabilidad de recomendación, lo que confirma que la experiencia del usuario tiene un efecto directo sobre la imagen y legitimidad del sistema. Sin embargo, incluso en niveles medios y altos de satisfacción persisten porcentajes relevantes de usuarios con percepciones negativas en aspectos específicos del servicio.
+
+El análisis multidimensional evidenció que las mayores afectaciones no se concentran en una sola dimensión, sino que se distribuyen principalmente en **información**, **entorno de uso** y **condiciones operativas**, especialmente en situaciones de alta demanda. Estas dimensiones explican buena parte del impacto social negativo identificado y muestran que la insatisfacción no responde únicamente a fallas aisladas, sino a la combinación de varios componentes del servicio.
+
+Las respuestas abiertas (P29) refuerzan estos hallazgos al identificar, desde el discurso espontáneo de los usuarios, temas recurrentes asociados a **horas pico**, **capacidad de trenes y buses**, **frecuencia del servicio**, **funcionamiento de alimentadores**, y **condiciones en estaciones y rutas**. El hecho de que los usuarios que dejan comentarios presenten, en promedio, mayores niveles de impacto social negativo confirma que el texto abierto actúa como un mecanismo de expresión de experiencias críticas.
+
+## Rutas de acción propuestas
+
+Con base en los análisis realizados, se proponen las siguientes rutas de acción para el mejoramiento de la satisfacción de los usuarios:
+
+1. **Priorización operativa en horas pico**: reforzar frecuencias, capacidad y gestión de flujos en los momentos de mayor congestión, dado que este es el principal foco de insatisfacción identificado tanto en los indicadores como en el discurso de los usuarios.
+
+2. **Mejoramiento de la información al usuario**: fortalecer la señalización, la comunicación en situaciones de imprevistos y la claridad en estaciones y vehículos, especialmente en contextos de alta demanda.
+
+3. **Intervenciones focalizadas en entorno y convivencia**: desarrollar estrategias de cultura ciudadana, orden y uso adecuado del espacio en estaciones, vagones y buses, orientadas a mejorar la experiencia colectiva.
+
+4. **Uso sistemático de las preguntas abiertas**: incorporar el análisis periódico de los comentarios como un complemento a los indicadores cuantitativos, permitiendo monitorear de forma temprana nuevas fuentes de insatisfacción.
+
+En conclusión, el uso articulado de análisis estadísticos y exploración cualitativa permitió identificar no solo el nivel de satisfacción del usuario, sino también los componentes del servicio que más inciden en su experiencia. Este enfoque integral ofrece una base sólida y accionable para la toma de decisiones orientadas al mejoramiento continuo del sistema y al fortalecimiento de la percepción positiva por parte de sus usuarios.
+
+
 

@@ -19,6 +19,9 @@ format:
     css: styles.css
     toc: true
     toc-title: "índice"
+    code-fold: true
+    df-print: paged
+    fig-align: center
 
 
 

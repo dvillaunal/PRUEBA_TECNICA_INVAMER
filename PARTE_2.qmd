@@ -1,9 +1,178 @@
 ---
-title: "About"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+code-fold: show
 ---
 
-About this site
+## Muestreo (propuesta y cálculos)
+
+### Supuestos para los cálculos
+
+Para el diseño muestral y el cálculo de los márgenes de error se adoptan los siguientes supuestos, acordes con la práctica estándar en estudios de opinión:
+
+- Nivel de confianza del 95%, correspondiente a un valor crítico de $z = 1.96$.
+- Se asume la máxima variabilidad poblacional ($p = 0.5$), lo cual garantiza un tamaño de muestra conservador.
+- Margen de error objetivo a nivel regional: $e < 3\%$.
+
+Se utiliza la fórmula clásica para la estimación de proporciones bajo muestreo aleatorio simple dentro de cada estrato:
+
+$$
+n = \frac{z^2 \, p(1-p)}{e^2}
+$$
+
+En la práctica, el trabajo de campo suele realizarse mediante conglomerados, lo que puede generar un efecto de diseño ($DEFF > 1$). En ese caso, el tamaño muestral requerido debe ajustarse como $n_{aj} = n \times DEFF$. Para esta propuesta se reporta el tamaño mínimo teórico, asumiendo $DEFF = 1$, con fines de planeación.
+
+### Método de muestreo propuesto (probabilístico, nacional y regional)
+
+Se propone un muestreo probabilístico estratificado por región, con un esquema multietápico, adecuado para garantizar representatividad territorial y viabilidad operativa a nivel nacional.
+
+El diseño contempla las siguientes etapas:
+
+- **Estratificación:** definición de seis estratos correspondientes a las regiones del país (Caribe, Centro-Oriente, Eje Cafetero, Pacífico, Centro-Sur-Amazonía y Llano).
+- **Primera etapa (municipios):** selección de municipios dentro de cada región utilizando probabilidad proporcional al tamaño poblacional proyectado para 2026 (PPS), con base en información del DANE.
+- **Segunda etapa (segmentos):** selección aleatoria de manzanas o segmentos censales dentro de cada municipio seleccionado.
+- **Tercera etapa (hogares):** selección sistemática de hogares dentro de cada segmento.
+- **Cuarta etapa (persona):** selección aleatoria del encuestado dentro del hogar (método de Kish o criterio de último cumpleaños).
+
+Este esquema asegura representatividad regional, reduce costos logísticos al concentrar el trabajo de campo y mantiene probabilidades de selección conocidas en todas las etapas del muestreo.
+
+### Tamaño de muestra requerido para un margen de error menor al 3% por región
 
 ```{r}
-1 + 1
+#| message: false
+#| warning: false
+#| collapse: false
+
+# Parámetros
+z <- 1.96
+p <- 0.5
+e <- 0.03
+
+# Tamaño de muestra por región (mínimo teórico, DEFF = 1)
+n_region <- (z^2 * p * (1 - p)) / (e^2)
+n_region
 ```
+
+```{r}
+#| message: false
+#| warning: false
+#| collapse: false
+
+# Redondeo práctico
+n_region_round <- ceiling(n_region)
+n_region_round
+```
+
+Con estos parámetros, el tamaño mínimo requerido por región es `r n_region_round`.  
+Esto corresponde aproximadamente a 1.068 encuestas por región.
+
+### Tamaño de muestra nacional
+
+```{r}
+#| message: false
+#| warning: false
+#| collapse: false
+
+n_total <- 6 * n_region_round
+n_total
+```
+
+En consecuencia, para garantizar un margen de error inferior al 3% en cada región, se requeriría un tamaño muestral nacional cercano a 6.400 encuestas, bajo los supuestos establecidos.
+
+### ¿Cuántos municipios deberían visitarse?
+
+Desde una perspectiva operativa, resulta conveniente fijar un número similar de encuestas por municipio dentro de cada región y, a partir de ello, determinar cuántos municipios deben incluirse.
+
+Como ejemplo ilustrativo:
+
+```{r}
+#| message: false
+#| warning: false
+#| collapse: false
+
+n_por_mpio <- 36
+mpios_por_region <- ceiling(n_region_round / n_por_mpio)
+mpios_por_region
+
+mpios_total <- 6 * mpios_por_region
+mpios_total
+```
+
+**Interpretación:**
+- Si se realizan 36 encuestas por municipio, sería necesario visitar alrededor de 30 municipios por región para completar el tamaño muestral requerido.
+- A nivel nacional, esto implicaría un total aproximado de 180 municipios.
+
+Este criterio permite distribuir la muestra de manera equilibrada, reducir el sesgo por concentración en grandes ciudades y mejorar la cobertura territorial del estudio.
+
+## Escenario 2: presupuesto máximo de 1.200 encuestas
+
+### Margen de error nacional con $n = 1200$
+
+El margen de error se calcula mediante la expresión:
+
+$$
+e = z \sqrt{\frac{p(1-p)}{n}}
+$$
+
+```{r}
+#| message: false
+#| warning: false
+#| collapse: false
+
+margen_error <- function(n, z = 1.96, p = 0.5){
+  z * sqrt(p * (1 - p) / n)
+}
+
+e_nacional_1200 <- margen_error(1200)
+e_nacional_1200
+
+# En porcentaje
+e_nacional_1200_pct <- 100 * e_nacional_1200
+e_nacional_1200_pct
+```
+
+Con una muestra total de 1.200 encuestas, el margen de error nacional es aproximadamente ±2,8%, cumpliendo el criterio solicitado a nivel nacional.
+
+### Margen de error por región con asignación igual
+
+Para mantener cobertura regional, se propone una asignación uniforme de la muestra:
+
+$$
+n_r = \frac{1200}{6} = 200
+$$
+
+```{r}
+#| message: false
+#| warning: false
+#| collapse: false
+
+n_region_1200 <- 1200 / 6
+n_region_1200
+
+e_region_200 <- margen_error(n_region_1200)
+e_region_200
+
+e_region_200_pct <- 100 * e_region_200
+e_region_200_pct
+```
+
+En este escenario, el margen de error por región sería cercano a ±6,9%.
+
+## Notas finales
+
+- Con una muestra de 1.200 encuestas, se logra una precisión adecuada a nivel nacional (±2,8%), cumpliendo el criterio de error inferior al 3%.
+
+- No obstante, para alcanzar un margen de error de ±3% en cada región, se requerirían aproximadamente 1.068 encuestas por región, lo que no es posible bajo la restricción presupuestal planteada.
+
+- En consecuencia, no se cumple el nivel de representatividad regional inicialmente solicitado con una muestra total de 1.200 encuestas.
+
+### ¿Es necesario cambiar el método de muestreo?
+
+No es necesario cambiar el enfoque metodológico. El diseño planteado (estratificación por región y selección multietápica con PPS) sigue siendo apropiado para asegurar cobertura territorial y mantener un procedimiento estadísticamente sólido.
+
+Lo que sí debe ajustarse es el alcance de lo que se puede concluir con el tamaño de muestra disponible. Con 1.200 encuestas, el estudio permite estimaciones confiables a nivel nacional, pero las estimaciones por región tendrán un margen de error más alto; por tanto, deben presentarse como resultados orientativos y no como cifras regionales de alta precisión.
+
+## Conclusión
+
+Para garantizar representatividad regional con un margen de error inferior al 3% y un nivel de confianza del 95%, se requeriría un tamaño muestral cercano a 1.068 encuestas por región, es decir, aproximadamente 6.400 encuestas a nivel nacional. Este diseño puede implementarse mediante muestreo probabilístico estratificado por región y selección multietápica de municipios, segmentos, hogares y personas. Si el presupuesto se limita a 1.200 encuestas, se alcanza una precisión nacional cercana a ±2,8%, pero la precisión regional se reduce a aproximadamente ±6,9%, por lo que no se cumple la meta regional inicialmente planteada. En este escenario, se recomienda mantener la estratificación regional y presentar los resultados regionales como orientativos, priorizando la estimación nacional.
